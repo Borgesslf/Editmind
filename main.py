@@ -10,7 +10,6 @@ from fastapi import FastAPI, File, UploadFile, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from dotenv import load_dotenv
-from groq import Groq
 from openai import OpenAI
 
 load_dotenv()
@@ -30,7 +29,6 @@ OUTPUT_DIR.mkdir(exist_ok=True)
 
 app.mount("/outputs", StaticFiles(directory="outputs"), name="outputs")
 
-GROQ_CLIENT = Groq(api_key=os.getenv("GROQ_API_KEY"))
 OPENAI_CLIENT = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 def segundos_para_timestamp(segundos: float) -> str:
@@ -56,6 +54,7 @@ def obter_metadados_video(caminho_video: str):
         raise Exception("Erro ao obter metadados do vídeo")
 
     dados = json.loads(resultado.stdout)
+
     stream = dados["streams"][0]
     duracao = float(dados["format"]["duration"])
 
@@ -78,8 +77,8 @@ def extrair_audio(caminho_video: str, caminho_audio: str):
         "-y",
         "-i", caminho_video,
         "-vn",
-        "-acodec", "pcm_s16le",
-        "-ar", "16000",
+        "-acodec", "mp3",
+        "-ar", "8000",
         "-ac", "1",
         caminho_audio
     ]
@@ -91,29 +90,15 @@ def extrair_audio(caminho_video: str, caminho_audio: str):
 
 def transcrever_audio(caminho_audio: str):
     with open(caminho_audio, "rb") as arquivo:
-        resposta = GROQ_CLIENT.audio.transcriptions.create(
-            file=(os.path.basename(caminho_audio), arquivo.read()),
-            model="whisper-large-v3-turbo",
-            response_format="verbose_json",
+        resposta = OPENAI_CLIENT.audio.transcriptions.create(
+            model="gpt-4o-mini-transcribe",
+            file=arquivo,
             language="pt"
         )
 
-    return resposta
+    return resposta.text
 
-def analisar_viralidade(segmentos):
-    segmentos_formatados = []
-
-    for segmento in segmentos:
-        inicio = round(segmento["start"], 2)
-        fim = round(segmento["end"], 2)
-        texto = segmento["text"].strip()
-
-        segmentos_formatados.append(
-            f"[{inicio}s - {fim}s] {texto}"
-        )
-
-    transcricao_formatada = "\n".join(segmentos_formatados)
-
+def analisar_viralidade(texto_transcricao: str):
     prompt = f"""
 Você é um editor especialista em TikTok, Reels e Shorts.
 
@@ -132,8 +117,14 @@ Formato:
   "motivo": "Explicação curta"
 }}
 
+IMPORTANTE:
+- O início e fim devem ser em segundos
+- O início nunca pode ser maior que o fim
+- O trecho deve existir dentro do vídeo
+- Evite escolher o vídeo inteiro
+
 Transcrição:
-{transcricao_formatada}
+{texto_transcricao}
 """
 
     resposta = OPENAI_CLIENT.chat.completions.create(
@@ -148,11 +139,11 @@ Transcrição:
                 "content": prompt
             }
         ],
-        response_format={"type": "json_object"},
-        temperature=0.4
+        response_format={"type": "json_object"}
     )
 
-    return json.loads(resposta.choices[0].message.content)
+    conteudo = resposta.choices[0].message.content
+    return json.loads(conteudo)
 
 def cortar_video(entrada: str, saida: str, inicio: float, fim: float):
     duracao = fim - inicio
@@ -180,7 +171,7 @@ def home():
         "status": "online",
         "api": "EditMind Pro API",
         "llm": "gpt-5-mini",
-        "transcricao": "whisper-large-v3-turbo"
+        "transcricao": "gpt-4o-mini-transcribe"
     }
 
 @app.post("/api/upload")
@@ -192,38 +183,46 @@ async def upload_video(
     pasta_temp = Path(tempfile.mkdtemp(prefix=f"editmind_{job_id}_"))
 
     try:
-        extensao = Path(file.filename).suffix
+        extensao = Path(file.filename).suffix.lower()
+
+        if extensao not in [".mp4", ".mov", ".avi", ".webm"]:
+            raise HTTPException(
+                status_code=400,
+                detail="Formato inválido. Use mp4, mov, avi ou webm."
+            )
 
         video_path = pasta_temp / f"video{extensao}"
-        audio_path = pasta_temp / "audio.wav"
+        audio_path = pasta_temp / "audio.mp3"
 
         with open(video_path, "wb") as buffer:
-            buffer.write(await file.read())
+            shutil.copyfileobj(file.file, buffer)
 
         detalhes_tecnicos = obter_metadados_video(str(video_path))
 
+        duracao_video = float(detalhes_tecnicos["duracao_segundos"])
+
+        if duracao_video > 90:
+            raise HTTPException(
+                status_code=413,
+                detail="Vídeo muito longo. Máximo permitido: 90 segundos."
+            )
+
         extrair_audio(str(video_path), str(audio_path))
 
-        transcricao = transcrever_audio(str(audio_path))
-
-        segmentos = []
-        texto_completo = []
-
-        for segmento in transcricao.segments:
-            segmentos.append({
-                "start": segmento.start,
-                "end": segmento.end,
-                "text": segmento.text
-            })
-
-            texto_completo.append(segmento.text.strip())
-
-        texto_transcricao = " ".join(texto_completo)
-
-        analise = analisar_viralidade(segmentos)
+        texto_transcricao = transcrever_audio(str(audio_path))
+        analise = analisar_viralidade(texto_transcricao)
 
         inicio_segundos = float(analise["inicio"])
         fim_segundos = float(analise["fim"])
+
+        if inicio_segundos < 0:
+            inicio_segundos = 0
+
+        if fim_segundos > duracao_video:
+            fim_segundos = duracao_video
+
+        if fim_segundos <= inicio_segundos:
+            fim_segundos = min(inicio_segundos + 30, duracao_video)
 
         nome_saida = f"corte_{job_id}.mp4"
         caminho_saida = OUTPUT_DIR / nome_saida
@@ -252,6 +251,10 @@ async def upload_video(
             "detalhes_tecnicos": detalhes_tecnicos,
             "url_corte": f"/outputs/{nome_saida}"
         }
+
+    except HTTPException:
+        shutil.rmtree(pasta_temp, ignore_errors=True)
+        raise
 
     except Exception as e:
         shutil.rmtree(pasta_temp, ignore_errors=True)
