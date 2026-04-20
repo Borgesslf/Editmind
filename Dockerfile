@@ -1,29 +1,28 @@
 FROM python:3.11-slim
 
-# Instala FFmpeg e dependencias do sistema
+# 1. Instala APENAS o essencial (FFmpeg para o corte de vídeo)
+# Removido o 'git' para deixar a imagem mais leve, a menos que você precise muito
 RUN apt-get update && apt-get install -y \
     ffmpeg \
-    git \
     && rm -rf /var/lib/apt/lists/*
 
-# Diretorio de trabalho
+# 2. Diretório de trabalho
 WORKDIR /app
 
-# Copia e instala dependencias Python
+# 3. Instala as dependências Python (Sem Torch/Whisper local!)
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Pre-baixa o modelo Whisper base (fica dentro da imagem, nao baixa a cada restart)
-RUN python -c "import whisper; whisper.load_model('base')"
+# --- AQUI ESTAVA O ERRO ---
+# REMOVEMOS a linha que baixava o modelo Whisper local. 
+# Agora a transcrição será via API (Groq), economizando 1GB de RAM.
 
-# Copia o projeto inteiro
+# 4. Copia o projeto e garante as pastas necessárias
 COPY . .
+RUN mkdir -p outputs && chmod 777 outputs
 
-# Cria pasta de outputs
-RUN mkdir -p outputs
+# 5. Porta padrão (Koyeb costuma usar 8000, mas vamos manter flexível)
+EXPOSE 8000
 
-# Porta padrao do Hugging Face Spaces
-EXPOSE 7860
-
-# Inicia o servidor
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "7860"]
+# 6. Inicia o servidor usando a porta 8000
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
