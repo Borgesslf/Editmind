@@ -146,17 +146,14 @@ Transcrição:
     return json.loads(conteudo)
 
 def cortar_video(entrada: str, saida: str, inicio: float, fim: float):
-    duracao = fim - inicio
-
     cmd = [
         "ffmpeg",
         "-y",
         "-ss", str(inicio),
+        "-to", str(fim),
         "-i", entrada,
-        "-t", str(duracao),
-        "-c:v", "copy",
-        "-c:a", "aac",
-        "-movflags", "+faststart",
+        "-c", "copy",
+        "-avoid_negative_ts", "1",
         saida
     ]
 
