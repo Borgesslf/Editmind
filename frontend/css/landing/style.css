@@ -1,0 +1,222 @@
+/* ============================================================
+   EditMind — css/landing/style.css (Landing Page)
+   ============================================================ */
+
+body.landing {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.landing .header {
+    flex-shrink: 0;
+}
+
+/* ── MAIN ─────────────────────────────────────────────────── */
+
+.landing-main {
+    flex: 1;
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 40px 24px 60px;
+    width: 100%;
+}
+
+/* ── HERO ─────────────────────────────────────────────────── */
+
+.landing-hero {
+    text-align: center;
+    padding: 80px 0 100px;
+}
+
+.landing-badge {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: #f97316;
+    margin-bottom: 28px;
+    padding: 8px 18px;
+    border: 1px solid rgba(249, 115, 22, 0.4);
+    border-radius: 999px;
+    background: rgba(249, 115, 22, 0.06);
+}
+
+.landing-title {
+    font-size: clamp(36px, 6vw, 56px);
+    font-weight: 900;
+    color: white;
+    line-height: 1.15;
+    margin-bottom: 24px;
+    letter-spacing: -1px;
+}
+
+.landing-title-accent {
+    color: #f97316;
+}
+
+.landing-lead {
+    font-size: 18px;
+    color: #9ca3af;
+    line-height: 1.7;
+    max-width: 540px;
+    margin: 0 auto 40px;
+}
+
+/* ── CTA BUTTON ───────────────────────────────────────────── */
+
+.btn-landing-cta {
+    display: inline-block;
+    padding: 18px 44px;
+    background: #f97316;
+    color: white;
+    font-size: 14px;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+    text-decoration: none;
+    border-radius: 999px;
+    border: none;
+    cursor: pointer;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    box-shadow: 0 8px 32px rgba(249, 115, 22, 0.3);
+}
+
+.btn-landing-cta:hover {
+    transform: scale(1.04);
+    box-shadow: 0 12px 40px rgba(249, 115, 22, 0.45);
+}
+
+/* ── FEATURES ─────────────────────────────────────────────── */
+
+.landing-features {
+    padding: 40px 0 72px;
+}
+
+.landing-section-title {
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: #4b5563;
+    text-align: center;
+    margin-bottom: 40px;
+}
+
+.landing-feature-list {
+    list-style: none;
+    display: grid;
+    gap: 20px;
+}
+
+@media (min-width: 640px) {
+    .landing-feature-list {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+.landing-feature-card {
+    background: rgba(10, 10, 12, 0.7);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 20px;
+    padding: 28px;
+    backdrop-filter: blur(20px);
+    transition: border-color 0.3s ease, transform 0.3s ease;
+}
+
+.landing-feature-card:hover {
+    border-color: rgba(249, 115, 22, 0.4);
+    transform: translateY(-4px);
+}
+
+.landing-feature-num {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    font-size: 14px;
+    font-weight: 900;
+    color: #f97316;
+    background: rgba(249, 115, 22, 0.12);
+    border-radius: 10px;
+    margin-bottom: 18px;
+}
+
+.landing-feature-title {
+    font-size: 17px;
+    font-weight: 800;
+    color: white;
+    margin-bottom: 10px;
+}
+
+.landing-feature-desc {
+    font-size: 14px;
+    color: #6b7280;
+    line-height: 1.6;
+}
+
+/* ── CTA BLOCK ────────────────────────────────────────────── */
+
+.landing-cta-block {
+    text-align: center;
+    padding: 64px 32px;
+    background: rgba(10, 10, 12, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 24px;
+    backdrop-filter: blur(20px);
+}
+
+.landing-cta-title {
+    font-size: 32px;
+    font-weight: 900;
+    color: white;
+    margin-bottom: 14px;
+    letter-spacing: -0.5px;
+}
+
+.landing-cta-desc {
+    font-size: 15px;
+    color: #6b7280;
+    margin-bottom: 28px;
+    line-height: 1.6;
+}
+
+/* ── FOOTER ───────────────────────────────────────────────── */
+
+.landing-footer {
+    flex-shrink: 0;
+    text-align: center;
+    padding: 28px 24px;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.landing-footer-text {
+    font-size: 12px;
+    color: #374151;
+    letter-spacing: 0.05em;
+}
+
+/* ── RESPONSIVO ───────────────────────────────────────────── */
+
+@media (max-width: 640px) {
+    .landing-hero {
+        padding: 48px 0 64px;
+    }
+
+    .landing-title {
+        font-size: 32px;
+    }
+
+    .landing-lead {
+        font-size: 16px;
+    }
+
+    .landing-cta-block {
+        padding: 40px 20px;
+    }
+
+    .landing-cta-title {
+        font-size: 24px;
+    }
+}
