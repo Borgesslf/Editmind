@@ -31,11 +31,13 @@ app.mount("/outputs", StaticFiles(directory="outputs"), name="outputs")
 
 OPENAI_CLIENT = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
+
 def segundos_para_timestamp(segundos: float) -> str:
     horas = int(segundos // 3600)
     minutos = int((segundos % 3600) // 60)
     segundos_restantes = int(segundos % 60)
     return f"{horas:02}:{minutos:02}:{segundos_restantes:02}"
+
 
 def obter_metadados_video(caminho_video: str):
     cmd = [
@@ -71,6 +73,7 @@ def obter_metadados_video(caminho_video: str):
         "duracao_segundos": str(round(duracao, 2))
     }
 
+
 def extrair_audio(caminho_video: str, caminho_audio: str):
     cmd = [
         "ffmpeg",
@@ -80,6 +83,7 @@ def extrair_audio(caminho_video: str, caminho_audio: str):
         "-acodec", "mp3",
         "-ar", "8000",
         "-ac", "1",
+        "-b:a", "32k",
         caminho_audio
     ]
 
@@ -87,6 +91,7 @@ def extrair_audio(caminho_video: str, caminho_audio: str):
 
     if resultado.returncode != 0:
         raise Exception(f"Erro ao extrair áudio: {resultado.stderr}")
+
 
 def transcrever_audio(caminho_audio: str):
     with open(caminho_audio, "rb") as arquivo:
@@ -96,7 +101,43 @@ def transcrever_audio(caminho_audio: str):
             language="pt"
         )
 
-    return resposta.text
+    texto_bruto = resposta.text
+
+    prompt_correcao = f"""
+Você recebeu uma transcrição automática de áudio em português.
+
+Sua tarefa:
+- Corrigir palavras erradas
+- Melhorar pontuação
+- Ajustar concordância
+- Remover repetições estranhas
+- Manter o sentido original
+- Não inventar informações
+- Não resumir
+- Apenas reescrever a transcrição de forma natural e coerente
+
+Transcrição original:
+{texto_bruto}
+"""
+
+    resposta_corrigida = OPENAI_CLIENT.chat.completions.create(
+        model="gpt-5-nano",
+        messages=[
+            {
+                "role": "system",
+                "content": "Você é um corretor de transcrições automáticas."
+            },
+            {
+                "role": "user",
+                "content": prompt_correcao
+            }
+        ]
+    )
+
+    texto_corrigido = resposta_corrigida.choices[0].message.content.strip()
+
+    return texto_corrigido
+
 
 def analisar_viralidade(texto_transcricao: str):
     prompt = f"""
@@ -145,6 +186,7 @@ Transcrição:
     conteudo = resposta.choices[0].message.content
     return json.loads(conteudo)
 
+
 def cortar_video(entrada: str, saida: str, inicio: float, fim: float):
     cmd = [
         "ffmpeg",
@@ -162,6 +204,7 @@ def cortar_video(entrada: str, saida: str, inicio: float, fim: float):
     if resultado.returncode != 0:
         raise Exception(f"Erro ao cortar vídeo: {resultado.stderr}")
 
+
 @app.get("/")
 def home():
     return {
@@ -170,6 +213,7 @@ def home():
         "llm": "gpt-5-mini",
         "transcricao": "gpt-4o-mini-transcribe"
     }
+
 
 @app.post("/api/upload")
 async def upload_video(
@@ -198,13 +242,19 @@ async def upload_video(
 
         duracao_video = float(detalhes_tecnicos["duracao_segundos"])
 
-        if duracao_video > 90:
+        if duracao_video > 180:
             raise HTTPException(
                 status_code=413,
-                detail="Vídeo muito longo. Máximo permitido: 90 segundos."
+                detail="Vídeo muito longo. Máximo permitido: 3 minutos."
             )
 
         extrair_audio(str(video_path), str(audio_path))
+
+        if os.path.getsize(audio_path) > 25 * 1024 * 1024:
+            raise HTTPException(
+                status_code=413,
+                detail="Áudio muito grande para transcrição."
+            )
 
         texto_transcricao = transcrever_audio(str(audio_path))
         analise = analisar_viralidade(texto_transcricao)
