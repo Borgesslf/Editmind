@@ -1,3 +1,9 @@
+"""
+EditMind - Backend API
+Stack: FastAPI + OpenAI Whisper API + GPT-4o + FFmpeg
+Deploy: Render (backend) + Vercel (frontend)
+"""
+
 import os
 import json
 import uuid
@@ -5,16 +11,37 @@ import tempfile
 import subprocess
 import shutil
 from pathlib import Path
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, File, UploadFile, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel
 from dotenv import load_dotenv
 from openai import OpenAI
 
 load_dotenv()
 
-app = FastAPI(title="EditMind Pro API")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
+client = OpenAI(api_key=OPENAI_API_KEY)
+
+OUTPUT_DIR = Path("outputs")
+OUTPUT_DIR.mkdir(exist_ok=True)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    print("Iniciando EditMind API...")
+    if not OPENAI_API_KEY:
+        print("AVISO: OPENAI_API_KEY nao configurada!")
+    else:
+        print("OpenAI configurada.")
+    yield
+    print("Encerrando.")
+
+
+app = FastAPI(title="EditMind API", version="2.0.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -24,285 +51,315 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-OUTPUT_DIR = Path("outputs")
-OUTPUT_DIR.mkdir(exist_ok=True)
-
 app.mount("/outputs", StaticFiles(directory="outputs"), name="outputs")
 
-OPENAI_CLIENT = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
+class YouTubeRequest(BaseModel):
+    url: str
+
+
+# ── HELPERS ──────────────────────────────────────────────────
 
 def segundos_para_timestamp(segundos: float) -> str:
-    horas = int(segundos // 3600)
-    minutos = int((segundos % 3600) // 60)
-    segundos_restantes = int(segundos % 60)
-    return f"{horas:02}:{minutos:02}:{segundos_restantes:02}"
+    s = int(segundos)
+    return f"{s//3600:02d}:{(s%3600)//60:02d}:{s%60:02d}"
 
 
-def obter_metadados_video(caminho_video: str):
+def obter_metadados_video(caminho_video: str) -> dict:
     cmd = [
-        "ffprobe",
-        "-v", "error",
+        "ffprobe", "-v", "error",
         "-select_streams", "v:0",
         "-show_entries", "stream=width,height,r_frame_rate",
         "-show_entries", "format=duration",
         "-of", "json",
-        caminho_video
+        caminho_video,
     ]
+    r = subprocess.run(cmd, capture_output=True, text=True)
+    if r.returncode != 0:
+        return {"resolucao": "N/A", "fps": "N/A", "duracao_segundos": "N/A"}
 
-    resultado = subprocess.run(cmd, capture_output=True, text=True)
+    dados = json.loads(r.stdout)
+    stream = dados.get("streams", [{}])[0]
+    duracao = round(float(dados.get("format", {}).get("duration", 0)), 2)
 
-    if resultado.returncode != 0:
-        raise Exception("Erro ao obter metadados do vídeo")
+    largura  = stream.get("width", 0)
+    altura   = stream.get("height", 0)
+    fps_raw  = stream.get("r_frame_rate", "0/1")
 
-    dados = json.loads(resultado.stdout)
-
-    stream = dados["streams"][0]
-    duracao = float(dados["format"]["duration"])
-
-    largura = stream.get("width", 0)
-    altura = stream.get("height", 0)
-
-    fps_raw = stream.get("r_frame_rate", "0/1")
-    numerador, denominador = fps_raw.split("/")
-    fps = round(float(numerador) / float(denominador), 2)
+    try:
+        num, den = fps_raw.split("/")
+        fps = round(float(num) / float(den), 2)
+    except Exception:
+        fps = 0
 
     return {
         "resolucao": f"{largura}x{altura}",
         "fps": str(fps),
-        "duracao_segundos": str(round(duracao, 2))
+        "duracao_segundos": str(duracao),
     }
 
 
-def extrair_audio(caminho_video: str, caminho_audio: str):
+def extrair_audio(caminho_video: str, caminho_audio: str) -> None:
+    """
+    Extrai audio em MP3 comprimido.
+    Taxa 16kHz mono — ideal para fala, mantém arquivo pequeno (limite 25MB da API).
+    """
     cmd = [
-        "ffmpeg",
-        "-y",
-        "-i", caminho_video,
+        "ffmpeg", "-y", "-i", caminho_video,
         "-vn",
-        "-acodec", "mp3",
-        "-ar", "8000",
-        "-ac", "1",
-        "-b:a", "32k",
-        caminho_audio
+        "-acodec", "libmp3lame",
+        "-ar", "16000",   # 16kHz — suficiente para fala, nao para musica
+        "-ac", "1",       # mono
+        "-b:a", "32k",    # bitrate baixo = arquivo menor
+        caminho_audio,
     ]
-
-    resultado = subprocess.run(cmd, capture_output=True, text=True)
-
-    if resultado.returncode != 0:
-        raise Exception(f"Erro ao extrair áudio: {resultado.stderr}")
+    r = subprocess.run(cmd, capture_output=True, text=True)
+    if r.returncode != 0:
+        raise RuntimeError(f"FFmpeg falhou na extracao de audio: {r.stderr}")
 
 
-def transcrever_audio(caminho_audio: str):
-    with open(caminho_audio, "rb") as arquivo:
-        resposta = OPENAI_CLIENT.audio.transcriptions.create(
-            model="gpt-4o-mini-transcribe",
-            file=arquivo,
-            language="pt"
+def transcrever_audio(caminho_audio: str) -> str:
+    """
+    Etapa 1: Transcreve com whisper-1 (unico modelo de transcricao da OpenAI).
+    Etapa 2: Corrige a transcricao com gpt-4o-mini (rapido e barato).
+    """
+    # ── Verificar tamanho (limite 25MB) ──────────────────────
+    tamanho_mb = Path(caminho_audio).stat().st_size / (1024 * 1024)
+    print(f"   -> Audio: {tamanho_mb:.1f} MB")
+    if tamanho_mb > 24:
+        raise RuntimeError(
+            f"Audio muito grande ({tamanho_mb:.1f}MB). "
+            "Use um video mais curto (max ~3 minutos com as configuracoes atuais)."
         )
 
-    texto_bruto = resposta.text
+    # ── Transcricao bruta com Whisper ─────────────────────────
+    with open(caminho_audio, "rb") as f:
+        resposta = client.audio.transcriptions.create(
+            model="whisper-1",          # Unico modelo de transcricao da OpenAI
+            file=f,
+            language="pt",              # Forca portugues
+            response_format="text",     # Texto simples, sem timestamps
+        )
 
-    prompt_correcao = f"""
-Você recebeu uma transcrição automática de áudio em português.
+    texto_bruto = resposta if isinstance(resposta, str) else resposta.text
+    print(f"   -> Transcricao bruta: {len(texto_bruto)} chars")
 
-Sua tarefa:
-- Corrigir palavras erradas
-- Melhorar pontuação
-- Ajustar concordância
-- Remover repetições estranhas
-- Manter o sentido original
-- Não inventar informações
-- Não resumir
-- Apenas reescrever a transcrição de forma natural e coerente
-
-Transcrição original:
-{texto_bruto}
-"""
-
-    resposta_corrigida = OPENAI_CLIENT.chat.completions.create(
-        model="gpt-5-nano",
+    # ── Correcao e limpeza com GPT-4o-mini ───────────────────
+    correcao = client.chat.completions.create(
+        model="gpt-4o-mini",            # Modelo real e barato da OpenAI
         messages=[
             {
                 "role": "system",
-                "content": "Você é um corretor de transcrições automáticas."
+                "content": (
+                    "Voce e um corretor de transcricoes automaticas em portugues brasileiro. "
+                    "Corrija erros de transcricao, pontuacao e concordancia. "
+                    "NAO resuma, NAO corte conteudo, NAO invente informacoes. "
+                    "Retorne APENAS o texto corrigido, sem explicacoes."
+                ),
             },
-            {
-                "role": "user",
-                "content": prompt_correcao
-            }
-        ]
+            {"role": "user", "content": texto_bruto},
+        ],
+        temperature=0.1,
+        max_tokens=4000,
     )
 
-    texto_corrigido = resposta_corrigida.choices[0].message.content.strip()
-
+    texto_corrigido = correcao.choices[0].message.content.strip()
+    print(f"   -> Transcricao corrigida: {len(texto_corrigido)} chars")
     return texto_corrigido
 
 
-def analisar_viralidade(texto_transcricao: str):
-    prompt = f"""
-Você é um editor especialista em TikTok, Reels e Shorts.
-
-Analise a transcrição abaixo e escolha o melhor trecho contínuo com potencial viral.
-
-Regras:
-- Escolha um trecho entre 15 e 60 segundos
-- Priorize partes com emoção, curiosidade, punchline, revelação, humor, polêmica ou frase forte
-- Nunca escolha começo vazio ou final cortado
-- Responda SOMENTE JSON válido
-
-Formato:
-{{
-  "inicio": 12.5,
-  "fim": 42.8,
-  "motivo": "Explicação curta"
-}}
-
-IMPORTANTE:
-- O início e fim devem ser em segundos
-- O início nunca pode ser maior que o fim
-- O trecho deve existir dentro do vídeo
-- Evite escolher o vídeo inteiro
-
-Transcrição:
-{texto_transcricao}
-"""
-
-    resposta = OPENAI_CLIENT.chat.completions.create(
-        model="gpt-5-mini",
+def analisar_viralidade(transcricao: str, duracao_total: float) -> dict:
+    """
+    Usa GPT-4o para identificar o melhor trecho viral (15 a 60 segundos).
+    """
+    resposta = client.chat.completions.create(
+        model="gpt-4o",                 # Modelo mais inteligente para analise
         messages=[
             {
                 "role": "system",
-                "content": "Você é um editor profissional especialista em vídeos virais."
+                "content": (
+                    "Voce e um editor especialista em TikTok, Reels e YouTube Shorts. "
+                    "Analise a transcricao e escolha o melhor trecho continuo com potencial viral. "
+                    "Priorize: emocao, curiosidade, revelacao, humor, polêmica ou frase de impacto. "
+                    "O trecho deve ter entre 15 e 60 segundos. "
+                    "Inicio e fim NUNCA podem ser iguais. "
+                    f"O video tem {duracao_total} segundos no total. "
+                    "Responda APENAS com JSON valido, sem markdown."
+                ),
             },
             {
                 "role": "user",
-                "content": prompt
-            }
+                "content": (
+                    f"Transcricao:\n{transcricao}\n\n"
+                    "Formato de resposta:\n"
+                    '{"inicio": 12.5, "fim": 42.8, "motivo": "Explicacao curta"}'
+                ),
+            },
         ],
-        response_format={"type": "json_object"}
+        temperature=0.2,
+        max_tokens=200,
+        response_format={"type": "json_object"},
     )
 
-    conteudo = resposta.choices[0].message.content
-    return json.loads(conteudo)
+    dados = json.loads(resposta.choices[0].message.content)
+
+    inicio = float(dados.get("inicio", 0))
+    fim    = float(dados.get("fim", min(60, duracao_total)))
+
+    # Sanitizacao dos valores
+    inicio = max(0, inicio)
+    fim    = min(fim, duracao_total)
+
+    if fim <= inicio:
+        fim = min(inicio + 30, duracao_total)
+
+    dados["inicio"] = inicio
+    dados["fim"]    = fim
+    return dados
 
 
-def cortar_video(entrada: str, saida: str, inicio: float, fim: float):
+def cortar_video(entrada: str, saida: str, inicio: float, fim: float) -> None:
     cmd = [
-        "ffmpeg",
-        "-y",
+        "ffmpeg", "-y",
         "-ss", str(inicio),
         "-to", str(fim),
         "-i", entrada,
         "-c", "copy",
         "-avoid_negative_ts", "1",
-        saida
+        saida,
     ]
+    r = subprocess.run(cmd, capture_output=True, text=True)
+    if r.returncode != 0:
+        raise RuntimeError(f"FFmpeg falhou no corte: {r.stderr[-500:]}")
 
-    resultado = subprocess.run(cmd, capture_output=True, text=True)
 
-    if resultado.returncode != 0:
-        raise Exception(f"Erro ao cortar vídeo: {resultado.stderr}")
-
+# ── ENDPOINTS ─────────────────────────────────────────────────
 
 @app.get("/")
 def home():
     return {
         "status": "online",
-        "api": "EditMind Pro API",
-        "llm": "gpt-5-mini",
-        "transcricao": "gpt-4o-mini-transcribe"
+        "api": "EditMind API",
+        "modelos": {
+            "transcricao": "whisper-1",
+            "correcao": "gpt-4o-mini",
+            "analise_viral": "gpt-4o",
+        },
     }
 
 
 @app.post("/api/upload")
 async def upload_video(
     background_tasks: BackgroundTasks,
-    file: UploadFile = File(...)
+    arquivo: UploadFile = File(...),
 ):
-    job_id = str(uuid.uuid4())[:8]
+    extensao = Path(arquivo.filename).suffix.lower()
+    if extensao not in [".mp4", ".mov", ".avi", ".webm"]:
+        raise HTTPException(status_code=400, detail="Formato invalido. Use mp4, mov, avi ou webm.")
+
+    job_id    = str(uuid.uuid4())[:8]
     pasta_temp = Path(tempfile.mkdtemp(prefix=f"editmind_{job_id}_"))
 
+    print(f"\n{'='*50}\nJob: {job_id} | Arquivo: {arquivo.filename}\n{'='*50}")
+
     try:
-        extensao = Path(file.filename).suffix.lower()
-
-        if extensao not in [".mp4", ".mov", ".avi", ".webm"]:
-            raise HTTPException(
-                status_code=400,
-                detail="Formato inválido. Use mp4, mov, avi ou webm."
-            )
-
+        # 1. Salvar video
         video_path = pasta_temp / f"video{extensao}"
-        audio_path = pasta_temp / "audio.mp3"
+        with open(video_path, "wb") as f:
+            shutil.copyfileobj(arquivo.file, f)
+        print(f"Video salvo: {video_path.stat().st_size / 1024 / 1024:.1f} MB")
 
-        with open(video_path, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
+        # 2. Metadados
+        print("Extraindo metadados...")
+        detalhes = obter_metadados_video(str(video_path))
+        duracao  = float(detalhes["duracao_segundos"])
+        print(f"   -> {detalhes}")
 
-        detalhes_tecnicos = obter_metadados_video(str(video_path))
-
-        duracao_video = float(detalhes_tecnicos["duracao_segundos"])
-
-        if duracao_video > 180:
+        # Limite de duracao: 3 minutos
+        if duracao > 180:
             raise HTTPException(
                 status_code=413,
-                detail="Vídeo muito longo. Máximo permitido: 3 minutos."
+                detail=f"Video muito longo ({int(duracao)}s). Maximo permitido: 3 minutos (180s).",
             )
 
+        # 3. Extrair audio
+        audio_path = pasta_temp / "audio.mp3"
+        print("Extraindo audio...")
         extrair_audio(str(video_path), str(audio_path))
 
-        if os.path.getsize(audio_path) > 25 * 1024 * 1024:
-            raise HTTPException(
-                status_code=413,
-                detail="Áudio muito grande para transcrição."
-            )
+        # 4. Transcrever + corrigir
+        print("Transcrevendo com Whisper-1 + corrigindo com GPT-4o-mini...")
+        transcricao = transcrever_audio(str(audio_path))
 
-        texto_transcricao = transcrever_audio(str(audio_path))
-        analise = analisar_viralidade(texto_transcricao)
+        # 5. Analisar viralidade
+        print("Analisando viralidade com GPT-4o...")
+        analise = analisar_viralidade(transcricao, duracao)
+        print(f"   -> Corte: {analise['inicio']}s -> {analise['fim']}s")
+        print(f"   -> Motivo: {analise['motivo']}")
 
-        inicio_segundos = float(analise["inicio"])
-        fim_segundos = float(analise["fim"])
-
-        if inicio_segundos < 0:
-            inicio_segundos = 0
-
-        if fim_segundos > duracao_video:
-            fim_segundos = duracao_video
-
-        if fim_segundos <= inicio_segundos:
-            fim_segundos = min(inicio_segundos + 30, duracao_video)
-
-        nome_saida = f"corte_{job_id}.mp4"
+        # 6. Cortar video
+        nome_saida    = f"corte_{job_id}.mp4"
         caminho_saida = OUTPUT_DIR / nome_saida
+        print(f"Cortando video...")
+        cortar_video(str(video_path), str(caminho_saida), analise["inicio"], analise["fim"])
 
-        cortar_video(
-            str(video_path),
-            str(caminho_saida),
-            inicio_segundos,
-            fim_segundos
-        )
+        background_tasks.add_task(shutil.rmtree, pasta_temp, ignore_errors=True)
+        print(f"Job {job_id} concluido!")
 
-        background_tasks.add_task(
-            shutil.rmtree,
-            pasta_temp,
-            ignore_errors=True
-        )
-
-        return {
+        return JSONResponse(content={
             "sucesso": True,
-            "transcricao": texto_transcricao,
+            "transcricao": transcricao,
             "corte_sugerido": {
-                "inicio": segundos_para_timestamp(inicio_segundos),
-                "fim": segundos_para_timestamp(fim_segundos),
-                "motivo": analise["motivo"]
+                "inicio": segundos_para_timestamp(analise["inicio"]),
+                "fim":    segundos_para_timestamp(analise["fim"]),
+                "motivo": analise.get("motivo", "Trecho com alto potencial viral."),
             },
-            "detalhes_tecnicos": detalhes_tecnicos,
-            "url_corte": f"/outputs/{nome_saida}"
-        }
+            "detalhes_tecnicos": detalhes,
+            "url_corte": f"/outputs/{nome_saida}",
+        })
 
     except HTTPException:
         shutil.rmtree(pasta_temp, ignore_errors=True)
         raise
+    except Exception as e:
+        shutil.rmtree(pasta_temp, ignore_errors=True)
+        print(f"ERRO job {job_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
+
+@app.post("/api/download-youtube")
+async def download_youtube(dados: YouTubeRequest):
+    if "youtube.com" not in dados.url and "youtu.be" not in dados.url:
+        raise HTTPException(status_code=400, detail="URL invalida.")
+
+    job_id    = str(uuid.uuid4())[:8]
+    pasta_temp = Path(tempfile.mkdtemp(prefix=f"editmind_yt_{job_id}_"))
+
+    try:
+        cmd = [
+            "yt-dlp",
+            "-f", "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best",
+            "--merge-output-format", "mp4",
+            "-o", str(pasta_temp / "%(title)s.%(ext)s"),
+            "--no-playlist",
+            dados.url,
+        ]
+        r = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+        if r.returncode != 0:
+            raise RuntimeError(f"yt-dlp: {r.stderr[-300:]}")
+
+        arquivos = list(pasta_temp.glob("*.mp4"))
+        if not arquivos:
+            raise RuntimeError("MP4 nao encontrado.")
+
+        return FileResponse(
+            path=str(arquivos[0]),
+            media_type="video/mp4",
+            filename="Video_EditMind.mp4",
+        )
+    except subprocess.TimeoutExpired:
+        shutil.rmtree(pasta_temp, ignore_errors=True)
+        raise HTTPException(status_code=408, detail="Timeout no download.")
     except Exception as e:
         shutil.rmtree(pasta_temp, ignore_errors=True)
         raise HTTPException(status_code=500, detail=str(e))
