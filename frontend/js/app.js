@@ -1,10 +1,12 @@
 /* ============================================================
    EditMind — js/app.js
+   Controlo de Upload e Processamento de Vídeo
    ============================================================ */
 
-const API_BASE_URL = "https://editmind-ay26.onrender.com";
+const API_BASE_URL = CONFIG.API_URL;
 const HEADERS_PADRAO = { "ngrok-skip-browser-warning": "true" };
 
+// Elementos da Interface
 const painelUpload = document.getElementById('painel-upload');
 const areaSoltar = document.getElementById('area-soltar');
 const entradaArquivo = document.getElementById('entrada-arquivo');
@@ -12,244 +14,146 @@ const nomeArquivoTexto = document.getElementById('nome-arquivo');
 const barraProgresso = document.getElementById('barra-progresso');
 const porcentagemTexto = document.getElementById('porcentagem-envio');
 const mensagemTexto = document.getElementById('mensagem-envio');
-const metaRes = document.getElementById('meta-res');
-const metaFps = document.getElementById('meta-fps');
-const metaDuracao = document.getElementById('meta-duracao');
 const painelIa = document.getElementById('painel-ia');
 const textoTranscricao = document.getElementById('texto-transcricao');
 const corteInicio = document.getElementById('corte-inicio');
 const corteFim = document.getElementById('corte-fim');
 const corteMotivo = document.getElementById('corte-motivo');
 
+// Garantir que o utilizador está logado
+Auth.exigirLogin();
+
 window.ultimoResultadoIA = null;
-
 let _timerInterval = null;
-let _timerStart = null;
 
-function iniciarTimer() {
-    _timerStart = Date.now();
-
-    _timerInterval = setInterval(() => {
-        const elapsed = Math.floor((Date.now() - _timerStart) / 1000);
-        const m = String(Math.floor(elapsed / 60)).padStart(2, '0');
-        const s = String(elapsed % 60).padStart(2, '0');
-        const el = document.getElementById('timer-display');
-
-        if (el) el.textContent = `${m}:${s}`;
-    }, 1000);
-}
-
-function pararTimer() {
-    clearInterval(_timerInterval);
-    _timerInterval = null;
-
-    const elapsed = _timerStart
-        ? Math.floor((Date.now() - _timerStart) / 1000)
-        : 0;
-
-    _timerStart = null;
-    return elapsed;
-}
-
-['dragenter', 'dragover', 'dragleave', 'drop'].forEach(evt => {
-    areaSoltar.addEventListener(evt, e => {
-        e.preventDefault();
-        e.stopPropagation();
-    });
-});
-
-['dragenter', 'dragover'].forEach(evt => {
-    areaSoltar.addEventListener(evt, () => {
-        areaSoltar.style.borderColor = '#f97316';
-        areaSoltar.style.background = 'rgba(249,115,22,0.06)';
-    });
-});
-
-['dragleave', 'drop'].forEach(evt => {
-    areaSoltar.addEventListener(evt, () => {
-        areaSoltar.style.borderColor = '';
-        areaSoltar.style.background = '';
-    });
-});
-
-areaSoltar.addEventListener('drop', e => processarArquivos(e.dataTransfer.files));
-entradaArquivo.addEventListener('change', e => processarArquivos(e.target.files));
-
-function setProgresso(pct) {
-    barraProgresso.style.width = pct + '%';
-    porcentagemTexto.textContent = pct + '%';
-}
-
-function setMensagem(html, cor = '#6b7280') {
-    mensagemTexto.innerHTML = html;
+// Funções de UI
+function setMensagem(texto, cor = '#94a3b8') {
+    mensagemTexto.textContent = texto;
     mensagemTexto.style.color = cor;
 }
 
-function animarMetaCard(elemento, valor) {
-    elemento.style.transition = 'none';
-    elemento.style.opacity = '0';
-    elemento.style.transform = 'translateY(6px)';
-    elemento.textContent = valor;
-
-    requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-            elemento.style.transition = 'opacity 0.4s ease, transform 0.4s ease';
-            elemento.style.opacity = '1';
-            elemento.style.transform = 'translateY(0)';
-        });
-    });
-}
-
 function resetUI() {
-    setProgresso(0);
-    setMensagem('Motor Python em Standby.');
-    barraProgresso.style.background = '';
-    nomeArquivoTexto.textContent = 'Aguardando feed...';
-    metaRes.textContent = '—';
-    metaFps.textContent = '—';
-    metaDuracao.textContent = '—';
-    entradaArquivo.value = '';
-
-    const timerEl = document.getElementById('timer-display');
-    if (timerEl) timerEl.textContent = '00:00';
+    barraProgresso.style.width = '0%';
+    barraProgresso.style.background = 'linear-gradient(90deg, #f97316, #fb923c)';
+    porcentagemTexto.textContent = '0%';
+    setMensagem('Aguardando ficheiro...');
+    nomeArquivoTexto.textContent = 'Nenhum ficheiro selecionado';
 }
 
-async function processarArquivos(arquivos) {
-    if (!arquivos || arquivos.length === 0) return;
+// Lógica de Envio
+async function enviarArquivo(arquivo) {
+    if (!arquivo) return;
 
-    const arquivo = arquivos[0];
+    // 1. Pegar o Token de Autenticação
+    const token = localStorage.getItem(CONFIG.TOKEN_KEY);
 
-    const tiposValidos = ['video/mp4', 'video/quicktime', 'video/x-msvideo', 'video/webm'];
-    const extsValidas = /\.(mp4|mov|avi|webm)$/i;
+    const formData = new FormData();
+    formData.append('file', arquivo);
 
-    if (!tiposValidos.includes(arquivo.type) && !extsValidas.test(arquivo.name)) {
-        alert('O EditMind aceita apenas arquivos mp4, mov, avi e webm.');
-        return;
-    }
-
-    nomeArquivoTexto.textContent = arquivo.name;
-    barraProgresso.style.background = 'linear-gradient(to right, #f97316, #facc15)';
-
-    iniciarTimer();
-
-    const etapas = [
-        { pct: 10, msg: '📤 Enviando vídeo para o servidor...', delay: 0 },
-        { pct: 25, msg: '🎵 FFmpeg extraindo áudio...', delay: 4000 },
-        { pct: 50, msg: '🎙️ Whisper transcrevendo...', delay: 8000 },
-        { pct: 75, msg: '🤖 GPT-5 Mini analisando viralidade...', delay: 15000 },
-        { pct: 90, msg: '✂️ Cortando o trecho selecionado...', delay: 22000 }
-    ];
-
-    const timeouts = [];
-
-    etapas.forEach(({ pct, msg, delay }) => {
-        timeouts.push(setTimeout(() => {
-            setProgresso(pct);
-            setMensagem(msg);
-        }, delay));
-    });
-
-    const dados = new FormData();
-    dados.append('file', arquivo);
+    resetUI();
+    setMensagem('A enviar vídeo...');
 
     try {
-        const resposta = await fetch(`${API_BASE_URL}/api/upload`, {
-            method: 'POST',
-            headers: HEADERS_PADRAO,
-            body: dados
-        });
+        const xhr = new XMLHttpRequest();
 
-        timeouts.forEach(clearTimeout);
-
-        const resultado = await resposta.json();
-        const tempoTotal = pararTimer();
-
-        if (!resposta.ok) {
-            throw new Error(resultado.detail || 'Falha no processamento.');
-        }
-
-        const infos = resultado.detalhes_tecnicos || {};
-
-        animarMetaCard(metaRes, infos.resolucao || 'N/A');
-        animarMetaCard(metaFps, infos.fps ? `${infos.fps} FPS` : 'N/A');
-        animarMetaCard(metaDuracao, infos.duracao_segundos ? `${infos.duracao_segundos}s` : 'N/A');
-
-        setProgresso(100);
-
-        window.ultimoResultadoIA = {
-            ...resultado,
-            tempoTotal
+        xhr.upload.onprogress = (e) => {
+            if (e.lengthComputable) {
+                const percent = Math.round((e.loaded / e.total) * 100);
+                barraProgresso.style.width = percent + '%';
+                porcentagemTexto.textContent = percent + '%';
+                if (percent === 100) setMensagem('🎬 Processando vídeo com IA... (Pode demorar)');
+            }
         };
 
-        const mm = String(Math.floor(tempoTotal / 60)).padStart(2, '0');
-        const ss = String(tempoTotal % 60).padStart(2, '0');
+        xhr.onload = function () {
+            if (xhr.status === 200) {
+                const resultado = JSON.parse(xhr.responseText);
+                window.ultimoResultadoIA = resultado;
+                setMensagem('✅ Concluído!', '#22c55e');
+                mostrarResultadosIA(resultado);
+            } else {
+                const erro = JSON.parse(xhr.responseText);
+                setMensagem(`❌ Erro: ${erro.detail || 'Falha no processamento'}`, '#ef4444');
+            }
+        };
 
-        setMensagem(`
-            <div style="display:flex;flex-direction:column;gap:10px;margin-top:10px;">
-                <div style="display:inline-flex;align-items:center;gap:8px;font-size:11px;color:#22c55e;font-weight:700;">
-                    <span style="width:8px;height:8px;border-radius:50%;background:#22c55e;display:inline-block;"></span>
-                    Concluído em ${mm}:${ss}
-                </div>
-                <button
-                    onclick="acionarTelaIA()"
-                    style="padding:12px 28px;background:#f97316;color:white;border:none;border-radius:999px;font-size:11px;font-weight:900;letter-spacing:0.12em;cursor:pointer;box-shadow:0 8px 24px rgba(249,115,22,0.4);transition:transform .2s;"
-                >
-                    Ver Relatório da IA ⚡
-                </button>
-            </div>
-        `, '#22c55e');
+        xhr.onerror = () => setMensagem('❌ Erro de conexão.', '#ef4444');
+
+        xhr.open('POST', `${API_BASE_URL}/api/processar`);
+
+        // 2. ADICIONAR OS HEADERS DE SEGURANÇA
+        xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+        xhr.setRequestHeader('ngrok-skip-browser-warning', 'true');
+
+        xhr.send(formData);
 
     } catch (erro) {
-        timeouts.forEach(clearTimeout);
-        pararTimer();
-
-        console.error('Erro:', erro);
-
-        setMensagem(`❌ ${erro.message || 'Erro de conexão.'}`, '#ef4444');
-        barraProgresso.style.background = '#ef4444';
-
-        setTimeout(resetUI, 5000);
+        setMensagem('❌ Erro inesperado.', '#ef4444');
     }
 }
-
-window.acionarTelaIA = function () {
-    if (window.ultimoResultadoIA) {
-        mostrarResultadosIA(window.ultimoResultadoIA);
-    }
-};
 
 function mostrarResultadosIA(resultado) {
     painelUpload.classList.add('hidden');
     painelIa.classList.remove('hidden');
-    painelIa.classList.remove('fade-out');
 
-    textoTranscricao.textContent = resultado.transcricao || 'Sem transcrição disponível.';
+    textoTranscricao.textContent = resultado.transcricao || 'Transcrição concluída.';
 
     if (resultado.corte_sugerido) {
-        corteInicio.textContent = resultado.corte_sugerido.inicio || '00:00:00';
-        corteFim.textContent = resultado.corte_sugerido.fim || '00:00:00';
-        corteMotivo.textContent = resultado.corte_sugerido.motivo || '—';
+        corteInicio.textContent = resultado.corte_sugerido.inicio + 's';
+        corteFim.textContent = resultado.corte_sugerido.fim + 's';
+        corteMotivo.textContent = resultado.corte_sugerido.motivo || 'Destaque viral identificado.';
     }
 
     const areaDownload = document.getElementById('area-download');
-
     if (areaDownload && resultado.url_corte) {
         areaDownload.innerHTML = `
-            <a href="${API_BASE_URL}${resultado.url_corte}" download="Corte_EditMind.mp4" class="btn-download">
-                ⬇ Baixar Corte (MP4)
+            <a href="${API_BASE_URL}${resultado.url_corte}" download class="btn-download">
+                ⬇ BAIXAR CORTE VIRAL (MP4)
             </a>
         `;
     }
 }
 
-window.resetarNovoCorte = function () {
-    painelIa.classList.add('fade-out');
+// Event Listeners de Drag & Drop
+areaSoltar.addEventListener('click', () => entradaArquivo.click());
+entradaArquivo.addEventListener('change', () => {
+    if (entradaArquivo.files[0]) {
+        nomeArquivoTexto.textContent = entradaArquivo.files[0].name;
+        enviarArquivo(entradaArquivo.files[0]);
+    }
+});
 
-    setTimeout(() => {
-        painelIa.classList.add('hidden');
-        painelIa.classList.remove('fade-out');
-        painelUpload.classList.remove('hidden');
-        resetUI();
-        window.ultimoResultadoIA = null;
-    }, 400);
+areaSoltar.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    areaSoltar.style.borderColor = '#f97316';
+});
+
+areaSoltar.addEventListener('dragleave', () => {
+    areaSoltar.style.borderColor = 'rgba(255,255,255,0.1)';
+});
+
+areaSoltar.addEventListener('drop', (e) => {
+    e.preventDefault();
+    areaSoltar.style.borderColor = 'rgba(255,255,255,0.1)';
+    const ficheiro = e.dataTransfer.files[0];
+    if (ficheiro) {
+        nomeArquivoTexto.textContent = ficheiro.name;
+        enviarArquivo(ficheiro);
+    }
+});
+
+window.resetarNovoCorte = function () {
+    painelIa.classList.add('hidden');
+    painelUpload.classList.remove('hidden');
+    resetUI();
+};
+
+// Verificar se o utilizador está logado ao carregar a página
+window.onload = function () {
+    if (!Auth.estaLogado()) {
+        const urlAtual = window.location.pathname;
+        if (!urlAtual.endsWith('home.html')) {
+            window.location.href = 'home.html';
+        }
+    }
 };

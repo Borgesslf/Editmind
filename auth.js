@@ -1,19 +1,16 @@
 /* ============================================================
    EditMind — js/auth.js
-   Sistema de autenticação:
-   - Modo Demo: funciona sem backend (localStorage)
-   - Modo Real: chama /api/auth/* no Render
+   Sistema de Autenticação Real (Supabase + FastAPI)
    ============================================================ */
 
 const Auth = {
-
-    // ── Verifica se está logado ─────────────────────────────
+    // Verifica se existe um token válido no navegador
     estaLogado() {
         const token = localStorage.getItem(CONFIG.TOKEN_KEY);
         return token && token !== 'null' && token !== 'undefined';
     },
 
-    // ── Pega dados do usuário atual ─────────────────────────
+    // Retorna os dados do utilizador logado
     getUsuario() {
         try {
             const raw = localStorage.getItem(CONFIG.USER_KEY);
@@ -23,44 +20,21 @@ const Auth = {
         }
     },
 
-    // ── Salva sessão no localStorage ────────────────────────
+    // Guarda o token e os dados do utilizador após login/cadastro
     _salvarSessao(token, usuario) {
         localStorage.setItem(CONFIG.TOKEN_KEY, token);
         localStorage.setItem(CONFIG.USER_KEY, JSON.stringify(usuario));
     },
 
-    // ── Limpa sessão ────────────────────────────────────────
+    // Limpa a sessão e volta para a landing page
     logout() {
         localStorage.removeItem(CONFIG.TOKEN_KEY);
         localStorage.removeItem(CONFIG.USER_KEY);
         window.location.href = 'home.html';
     },
 
-    // ── MODO DEMO — funciona sem qualquer backend ───────────
-    modoDemo() {
-        const usuario = {
-            nome: 'Usuário Demo',
-            email: 'demo@editmind.app',
-            modo: 'demo',
-        };
-        this._salvarSessao('demo_token_' + Date.now(), usuario);
-        window.location.href = 'index.html';
-    },
-
-    // ── LOGIN DEV — para testes rápidos ─────────────────────
-    loginDev() {
-        const usuario = {
-            nome: 'Dev',
-            email: 'dev@editmind.app',
-            modo: 'dev',
-        };
-        this._salvarSessao('dev_token_' + Date.now(), usuario);
-        window.location.href = 'index.html';
-    },
-
-    // ── LOGIN REAL ──────────────────────────────────────────
+    // Faz a chamada de login para o teu backend no Render
     async login(email, senha) {
-        // Se o backend não tiver rota de auth, usa modo demo automaticamente
         try {
             const res = await fetch(`${CONFIG.API_URL}/api/auth/login`, {
                 method: 'POST',
@@ -68,71 +42,50 @@ const Auth = {
                 body: JSON.stringify({ email, senha }),
             });
 
-            if (res.ok) {
-                const dados = await res.json();
+            const dados = await res.json();
+
+            if (res.ok && dados.sucesso) {
                 this._salvarSessao(dados.token, dados.usuario);
                 return { sucesso: true };
+            } else {
+                return { sucesso: false, erro: dados.detail || 'E-mail ou senha incorretos.' };
             }
-
-            // Fallback: aceita qualquer email/senha no modo MVP
-            // REMOVA este bloco em produção real
-            if (email && senha && senha.length >= 6) {
-                const usuario = { nome: email.split('@')[0], email, modo: 'local' };
-                this._salvarSessao('local_' + Date.now(), usuario);
-                return { sucesso: true };
-            }
-
-            const erro = await res.json().catch(() => ({}));
-            return { sucesso: false, erro: erro.detail || 'Email ou senha incorretos.' };
-
-        } catch {
-            // Sem backend — aceita qualquer credencial válida (MVP)
-            if (email && senha && senha.length >= 6) {
-                const usuario = { nome: email.split('@')[0], email, modo: 'local' };
-                this._salvarSessao('local_' + Date.now(), usuario);
-                return { sucesso: true };
-            }
-            return { sucesso: false, erro: 'Senha deve ter pelo menos 6 caracteres.' };
+        } catch (err) {
+            return { sucesso: false, erro: 'Servidor offline ou erro de rede.' };
         }
     },
 
-    // ── CADASTRO REAL ───────────────────────────────────────
+    // Faz a chamada de cadastro para o teu backend no Render
     async cadastrar(nome, email, senha) {
         try {
             const res = await fetch(`${CONFIG.API_URL}/api/auth/cadastro`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ nome, email, senha }),
+                body: JSON.stringify({ email, senha }), // O backend usa email/senha
             });
 
-            if (res.ok) {
-                const dados = await res.json();
-                this._salvarSessao(dados.token, dados.usuario);
-                return { sucesso: true };
+            const dados = await res.json();
+
+            if (res.ok && dados.sucesso) {
+                // Se o Supabase já devolver o token (sem precisar de confirmar email)
+                if (dados.token) {
+                    this._salvarSessao(dados.token, dados.usuario);
+                    return { sucesso: true };
+                }
+                // Se precisar de confirmar email
+                return { sucesso: true, msg: dados.msg };
+            } else {
+                return { sucesso: false, erro: dados.detail || 'Erro ao criar conta.' };
             }
-
-            // Fallback MVP — registra localmente
-            const usuario = { nome, email, modo: 'local' };
-            this._salvarSessao('local_' + Date.now(), usuario);
-            return { sucesso: true };
-
-        } catch {
-            // Sem backend — cadastra localmente
-            const usuario = { nome, email, modo: 'local' };
-            this._salvarSessao('local_' + Date.now(), usuario);
-            return { sucesso: true };
+        } catch (err) {
+            return { sucesso: false, erro: 'Falha na conexão com o servidor.' };
         }
     },
 
-    // ── Protege páginas que exigem login ────────────────────
-    // Chame no início de páginas protegidas
-    exigirLogin(redirecionarPara = 'login.html') {
+    // Bloqueia o acesso a páginas protegidas (como o index.html)
+    exigirLogin() {
         if (!this.estaLogado()) {
-            window.location.href = redirecionarPara;
-            return false;
+            window.location.href = 'login.html';
         }
-        return true;
-    },
+    }
 };
-
-window.Auth = Auth;

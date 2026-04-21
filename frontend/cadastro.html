@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EditMind - Criar Conta</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(20px);
+        }
+
+        .glow-orange:focus {
+            box-shadow: 0 0 15px rgba(249, 115, 22, 0.3);
+            border-color: #f97316;
+        }
+    </style>
+</head>
+
+<body class="bg-[#0b0d11] text-gray-100 min-h-screen flex flex-col">
+
+    <header class="w-full flex justify-between items-center px-6 md:px-12 py-8 z-20">
+        <a href="home.html" class="no-underline hover:scale-105 transition-transform inline-block">
+            <h1 class="text-3xl font-black italic tracking-tighter text-white">
+                EDIT<span class="text-[#f97316] drop-shadow-[0_0_15px_rgba(249,115,22,0.5)]">MIND</span>
+            </h1>
+        </a>
+    </header>
+
+    <main class="flex-grow flex items-center justify-center px-6 pb-12">
+        <div class="w-full max-w-md">
+            <div class="glass-panel border border-gray-800/50 rounded-[2rem] p-8 md:p-10 shadow-2xl">
+
+                <div class="mb-10 text-center">
+                    <h2 class="text-3xl font-black text-white tracking-tight mb-2">Comece agora</h2>
+                    <p class="text-gray-500 text-sm">Crie sua conta gratuita e domine os cortes.</p>
+                </div>
+
+                <form id="form-cadastro" class="space-y-5">
+                    <div id="msg-status" class="hidden p-4 rounded-xl text-sm font-medium border">
+                        <p></p>
+                    </div>
+
+                    <div>
+                        <label
+                            class="block text-xs font-black uppercase tracking-widest text-gray-600 mb-2 ml-1">E-mail</label>
+                        <input type="email" id="email" required
+                            class="w-full bg-black/40 border border-gray-800 rounded-2xl py-4 px-6 text-white outline-none glow-orange transition-all placeholder:text-gray-700"
+                            placeholder="seu@email.com">
+                    </div>
+
+                    <div>
+                        <label
+                            class="block text-xs font-black uppercase tracking-widest text-gray-600 mb-2 ml-1">Senha</label>
+                        <input type="password" id="senha" required
+                            class="w-full bg-black/40 border border-gray-800 rounded-2xl py-4 px-6 text-white outline-none glow-orange transition-all placeholder:text-gray-700"
+                            placeholder="••••••••">
+                    </div>
+
+                    <button type="submit" id="btn-cadastro"
+                        class="w-full bg-[#f97316] hover:bg-white hover:text-[#f97316] text-white font-black py-4 rounded-2xl text-xs uppercase tracking-[0.2em] transition-all shadow-[0_10px_25px_rgba(249,115,22,0.2)] active:scale-95">
+                        Criar Minha Conta
+                    </button>
+                </form>
+
+                <div class="mt-8 text-center">
+                    <p class="text-gray-500 text-sm">
+                        Já tem uma conta?
+                        <a href="login.html"
+                            class="text-white font-bold hover:text-[#f97316] transition-colors">Entrar</a>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="w-full text-center py-6 border-t border-gray-800/50">
+        <p class="text-xs font-semibold text-gray-700 tracking-widest uppercase">EditMind © 2026</p>
+    </footer>
+
+    <script src="js/config.js"></script>
+    <script src="js/auth.js"></script>
+    <script>
+        // Se já estiver logado, não precisa cadastrar
+        if (Auth.estaLogado()) window.location.href = 'index.html';
+
+        const form = document.getElementById('form-cadastro');
+        const btn = document.getElementById('btn-cadastro');
+        const statusDiv = document.getElementById('msg-status');
+        const statusP = statusDiv.querySelector('p');
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            // UI Feedback
+            btn.disabled = true;
+            btn.textContent = 'Processando...';
+            statusDiv.classList.add('hidden');
+
+            const email = document.getElementById('email').value;
+            const senha = document.getElementById('senha').value;
+
+            // Chama a função que criamos no seu auth.js
+            const resultado = await Auth.cadastrar(null, email, senha);
+
+            if (resultado.sucesso) {
+                statusDiv.classList.remove('hidden', 'bg-red-500/10', 'border-red-500/50', 'text-red-500');
+                statusDiv.classList.add('bg-green-500/10', 'border-green-500/50', 'text-green-500');
+
+                if (resultado.msg) {
+                    statusP.textContent = resultado.msg; // "Verifique seu e-mail"
+                    btn.textContent = 'E-mail enviado!';
+                } else {
+                    statusP.textContent = 'Conta criada com sucesso! Redirecionando...';
+                    setTimeout(() => window.location.href = 'index.html', 2000);
+                }
+            } else {
+                statusDiv.classList.remove('hidden', 'bg-green-500/10', 'border-green-500/50', 'text-green-500');
+                statusDiv.classList.add('bg-red-500/10', 'border-red-500/50', 'text-red-500');
+                statusP.textContent = resultado.erro || 'Erro ao criar conta.';
+                btn.disabled = false;
+                btn.textContent = 'Criar Minha Conta';
+            }
+        });
+    </script>
+</body>
+
+</html>
