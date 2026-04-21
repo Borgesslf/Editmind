@@ -2,7 +2,7 @@ fastapi==0.111.0
 uvicorn[standard]==0.30.1
 python-multipart==0.0.9
 python-dotenv==1.0.1
-openai
+openai==1.70.0
 yt-dlp==2024.5.27
-httpx==0.27.0
 supabase==2.4.0
+httpx==0.25.2
