@@ -118,35 +118,38 @@
         <p class="text-xs font-semibold text-gray-700 tracking-widest uppercase">EditMind © 2026</p>
     </footer>
 
-    <script src="./js/config.js"></script>
-    <script src="./js/auth.js"></script>
+    <script src="js/config.js"
+        onerror="alert('CRÍTICO: Ficheiro js/config.js não encontrado. Verifique a sua pasta!')"></script>
+    <script src="js/auth.js"></script>
     <script>
-        if (Auth.estaLogado()) window.location.href = 'index.html';
+        if (typeof Auth !== 'undefined') {
+            if (Auth.estaLogado()) window.location.href = 'index.html';
 
-        document.getElementById('form-login').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const btn = document.getElementById('btn-login');
-            const erroDiv = document.getElementById('msg-erro');
-            const erroP = erroDiv.querySelector('p');
+            document.getElementById('form-login').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const btn = document.getElementById('btn-login');
+                const erroDiv = document.getElementById('msg-erro');
+                const erroP = erroDiv.querySelector('p');
 
-            btn.disabled = true;
-            btn.textContent = 'Entrando...';
-            erroDiv.classList.add('hidden');
+                btn.disabled = true;
+                btn.textContent = 'Entrando...';
+                erroDiv.classList.add('hidden');
 
-            const email = document.getElementById('email').value;
-            const senha = document.getElementById('senha').value;
+                const email = document.getElementById('email').value;
+                const senha = document.getElementById('senha').value;
 
-            const resultado = await Auth.login(email, senha);
+                const resultado = await Auth.login(email, senha);
 
-            if (resultado.sucesso) {
-                window.location.href = 'index.html';
-            } else {
-                erroP.textContent = resultado.erro || 'Erro ao fazer login.';
-                erroDiv.classList.remove('hidden');
-                btn.disabled = false;
-                btn.textContent = 'Entrar';
-            }
-        });
+                if (resultado.sucesso) {
+                    window.location.href = 'index.html';
+                } else {
+                    erroP.textContent = resultado.erro || 'Erro ao fazer login.';
+                    erroDiv.classList.remove('hidden');
+                    btn.disabled = false;
+                    btn.textContent = 'Entrar';
+                }
+            });
+        }
     </script>
 </body>
 
