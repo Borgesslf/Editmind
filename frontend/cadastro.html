@@ -85,10 +85,9 @@
         <p class="text-xs font-semibold text-gray-700 tracking-widest uppercase">EditMind © 2026</p>
     </footer>
 
-    <script src="js/config.js"></script>
-    <script src="js/auth.js"></script>
+    <script src="./js/config.js"></script>
+    <script src="./js/auth.js"></script>
     <script>
-        // Se já estiver logado, não precisa cadastrar
         if (Auth.estaLogado()) window.location.href = 'index.html';
 
         const form = document.getElementById('form-cadastro');
@@ -99,7 +98,6 @@
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
 
-            // UI Feedback
             btn.disabled = true;
             btn.textContent = 'Processando...';
             statusDiv.classList.add('hidden');
@@ -107,7 +105,6 @@
             const email = document.getElementById('email').value;
             const senha = document.getElementById('senha').value;
 
-            // Chama a função que criamos no seu auth.js
             const resultado = await Auth.cadastrar(null, email, senha);
 
             if (resultado.sucesso) {
@@ -115,7 +112,7 @@
                 statusDiv.classList.add('bg-green-500/10', 'border-green-500/50', 'text-green-500');
 
                 if (resultado.msg) {
-                    statusP.textContent = resultado.msg; // "Verifique seu e-mail"
+                    statusP.textContent = resultado.msg;
                     btn.textContent = 'E-mail enviado!';
                 } else {
                     statusP.textContent = 'Conta criada com sucesso! Redirecionando...';
