@@ -1,217 +1,249 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>EditMind</title>
+    <title>EditMind — Studio</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="./css/style.css">
 </head>
-
 <body>
 
-    <header class="header">
-        <a href="home.html" class="logo">
-            <h1 class="logoEDIT">EDIT<span class="logoMIND">MIND</span></h1>
-        </a>
-        <nav class="btn-nav" id="btnNav">
-            <button type="button" class="nav-toggle" id="navToggle" aria-label="Abrir menu">
-                <span class="menu-icon-wrapper">
-                    <span class="menu-icon-line first"></span>
-                    <span class="menu-icon-line middle"></span>
-                    <span class="menu-icon-line last"></span>
-                </span>
+<header class="header">
+    <a href="home.html" class="logo">
+        <h1 class="logoEDIT">EDIT<span class="logoMIND">MIND</span></h1>
+    </a>
+    <nav class="btn-nav" id="btnNav">
+        <button type="button" class="nav-toggle" id="navToggle" aria-label="Menu">
+            <span class="menu-icon-wrapper">
+                <span class="menu-icon-line first"></span>
+                <span class="menu-icon-line middle"></span>
+                <span class="menu-icon-line last"></span>
+            </span>
+        </button>
+        <div class="nav-items">
+            <button type="button" onclick="mudarAba('inicio')"     class="nav-item active" data-aba="inicio">
+                <span><img src="assets/img/home.svg"     alt="Início"      class="nav-icon"></span>
             </button>
-            <div class="nav-items">
-                <button type="button" onclick="mudarAba('inicio')" class="nav-item active" data-aba="inicio">
-                    <span><img src="assets/img/home.svg" alt="Início" class="nav-icon"></span>
-                </button>
-                <button type="button" onclick="mudarAba('conteudos')" class="nav-item" data-aba="conteudos">
-                    <span><img src="assets/img/content.svg" alt="Conteúdos" class="nav-icon"></span>
-                </button>
-                <button type="button" onclick="mudarAba('ferramentas')" class="nav-item" data-aba="ferramentas">
-                    <span><img src="assets/img/bolt.svg" alt="Utilitários" class="nav-icon"></span>
-                </button>
-                <button type="button" onclick="mudarAba('configs')" class="nav-item" data-aba="configs">
-                    <span><img src="assets/img/settings.svg" alt="Configurar" class="nav-icon"></span>
-                </button>
-            </div>
-        </nav>
-    </header>
+            <button type="button" onclick="mudarAba('conteudos')"  class="nav-item"        data-aba="conteudos">
+                <span><img src="assets/img/content.svg"  alt="Conteúdos"   class="nav-icon"></span>
+            </button>
+            <button type="button" onclick="mudarAba('ferramentas')" class="nav-item"       data-aba="ferramentas">
+                <span><img src="assets/img/bolt.svg"     alt="Utilitários" class="nav-icon"></span>
+            </button>
+            <button type="button" onclick="mudarAba('configs')"    class="nav-item"        data-aba="configs">
+                <span><img src="assets/img/settings.svg" alt="Config"      class="nav-icon"></span>
+            </button>
+        </div>
+    </nav>
+</header>
 
-    <main class="main-container">
+<main class="main-container">
 
-        <section id="aba-inicio" class="section active">
+    <!-- ══ ABA: NOVO PROJETO ══════════════════════════════════ -->
+    <section id="aba-inicio" class="section active">
 
-            <div class="section-header">
-                <h2 class="title">Novo Projeto</h2>
-                <p class="subtitle">Alimente a IA com seu arquivo bruto.</p>
-            </div>
+        <div class="section-header">
+            <h2 class="title">Novo Projeto</h2>
+            <p class="subtitle">Alimente a IA com seu arquivo bruto.</p>
+        </div>
 
-            <div id="painel-upload" class="tools-grid">
+        <!-- Painel de upload -->
+        <div id="painel-upload" class="tools-grid">
 
-                <div class="upload-column">
-                    <div id="area-soltar" class="tool-bentoCard upload-card">
-                        <img src="assets/img/newVideo.svg" alt="upload icon" class="upload-icon">
-                        <h3 class="upload-title">Arrastar mídia</h3>
-                        <p class="upload-subtitle">Suporta MP4 e MOV para extração de alta fidelidade.</p>
-                        <input type="file" id="entrada-arquivo" class="hidden-input"
-                            accept="video/mp4,video/quicktime" />
-                        <button onclick="document.getElementById('entrada-arquivo').click()" class="btn-upload">
-                            Selecionar Arquivo
-                        </button>
-                        <a href="assets/video_teste_15s.mp4" download class="upload-link">
-                            Não tem um vídeo? Baixe o teste (1MB)
-                        </a>
-                    </div>
-                </div>
-
-                <div class="status-column">
-
-                    <div id="status-envio" class="tool-bentoCard status-card">
-                        <div class="status-header">
-                            <span class="status-label">Engine Status</span>
-                            <div style="display:flex;align-items:baseline;gap:12px;">
-                                <span id="porcentagem-envio" class="status-percentage">0%</span>
-                                <span id="timer-display" class="status-timer">00:00</span>
-                            </div>
-                        </div>
-
-                        <span id="nome-arquivo" class="status-file">Aguardando feed...</span>
-
-                        <div class="progress-bar">
-                            <div id="barra-progresso" class="progress-fill"></div>
-                        </div>
-
-                        <p id="mensagem-envio" class="status-message"></p>
-                    </div>
-
-                    <div class="meta-row">
-                        <div class="tool-bentoCard meta-card">
-                            <span class="meta-label">Resolução</span>
-                            <span id="meta-res" class="meta-value">—</span>
-                        </div>
-                        <div class="tool-bentoCard meta-card">
-                            <span class="meta-label">Framerate</span>
-                            <span id="meta-fps" class="meta-value">—</span>
-                        </div>
-                        <div class="tool-bentoCard meta-card meta-duration">
-                            <span class="meta-label">Duração Total</span>
-                            <span id="meta-duracao" class="meta-big">—</span>
-                        </div>
-                    </div>
-
-                </div>
-            </div>
-
-            <div id="painel-ia" class="painel-ia hidden">
-
-                <div class="tool-bentoCard transcription-card">
-                    <div class="card-header">
-                        <span class="card-status-dot"></span>
-                        <span class="card-label">Whisper Engine • Transcrição</span>
-                        <div style="margin-left:auto;display:flex;flex-direction:column;align-items:flex-end;gap:2px;">
-                            <span id="ia-meta-info" class="ia-meta-chip"></span>
-                            <span id="tempo-processamento" class="ia-tempo-chip"></span>
-                        </div>
-                    </div>
-                    <div class="transcription-box">
-                        <p id="texto-transcricao">Aguardando sinal do servidor...</p>
-                    </div>
-                </div>
-
-                <div class="tool-bentoCard cut-card">
-
-                    <div class="card-header highlight">
-                        <span class="card-label">Corte Viral Encontrado</span>
-                    </div>
-
-                    <div class="cut-time">
-                        <div>
-                            <span class="meta-label">Início</span>
-                            <span id="corte-inicio" class="cut-value">00:00:00</span>
-                        </div>
-                        <div class="cut-separator">—</div>
-                        <div>
-                            <span class="meta-label">Fim</span>
-                            <span id="corte-fim" class="cut-value highlight-text">00:00:00</span>
-                        </div>
-                    </div>
-
-                    <div class="cut-reason">
-                        <span class="meta-label">Motivo do Algoritmo</span>
-                        <p id="corte-motivo">...</p>
-                    </div>
-
-                    <div id="area-download" class="cut-download"></div>
-
-                    <button onclick="resetarNovoCorte()" class="btn-secondary">
-                        Analisar Outro Vídeo
+            <div class="upload-column">
+                <div id="area-soltar" class="tool-bentoCard upload-card">
+                    <img src="assets/img/newVideo.svg" alt="upload" class="upload-icon">
+                    <h3 class="upload-title">Arrastar mídia</h3>
+                    <p class="upload-subtitle">Suporta MP4 e MOV · máx 3 minutos · 200 MB</p>
+                    <input type="file" id="entrada-arquivo" class="hidden-input" accept="video/mp4,video/quicktime,video/avi,video/webm">
+                    <button onclick="document.getElementById('entrada-arquivo').click()" class="btn-upload">
+                        Selecionar Arquivo
                     </button>
-
+                    <a href="assets/video_teste_15s.mp4" download class="upload-link">
+                        Não tem um vídeo? Baixe o teste (1 MB)
+                    </a>
                 </div>
             </div>
 
-        </section>
-
-        <section id="aba-conteudos" class="section">
-            <div class="section-header">
-                <h2 class="title">Meus Conteúdos</h2>
-                <p class="subtitle">Sua esteira de cortes aprovados.</p>
-            </div>
-            <div class="tools-grid">
-                <div class="tool-bentoCard empty-state">
-                    <img src="assets/img/content.svg" alt="content" class="content-icon">
-                    <h3 class="upload-title">Vazio por aqui</h3>
-                    <p class="upload-subtitle">Inicie fazendo o upload do seu primeiro arquivo bruto.</p>
-                    <button onclick="mudarAba('inicio')" class="btn-voltaInicio">Criar Projeto</button>
-                </div>
-            </div>
-        </section>
-
-        <section id="aba-ferramentas" class="section">
-            <div class="section-header">
-                <h2 class="title">Ferramentas Extras</h2>
-                <p class="subtitle">Utilitários de alta performance.</p>
-            </div>
-            <div class="tools-grid">
-                <div class="tool-bentoCard tool-card">
-                    <div class="tool-header">
-                        <img src="assets/img/youtubeLogo.svg" alt="YT" class="yt-icon">
-                        <div>
-                            <h3 class="tool-title">YT Downloader</h3>
-                            <p class="tool-description">Extração em 1080p</p>
+            <div class="status-column">
+                <div id="status-envio" class="tool-bentoCard status-card">
+                    <div class="status-header">
+                        <span class="status-label">Engine Status</span>
+                        <div style="display:flex;align-items:baseline;gap:12px;">
+                            <span id="porcentagem-envio" class="status-percentage">0%</span>
+                            <span id="timer-display"     class="status-timer">00:00</span>
                         </div>
                     </div>
-                    <label class="input-label">URL do Vídeo</label>
-                    <input type="text" id="input-youtube" class="input-field" placeholder="https://youtube.com/...">
-                    <button id="btn-youtube" onclick="baixarYouTube()" class="btn-yt">BAIXAR</button>
+                    <span id="nome-arquivo" class="status-file">Aguardando feed...</span>
+                    <div class="progress-bar">
+                        <div id="barra-progresso" class="progress-fill"></div>
+                    </div>
+                    <p id="mensagem-envio" class="status-message"></p>
                 </div>
-                <div class="tool-bentoCard empty-tool">
-                    <p>Módulo em construção</p>
+
+                <div class="meta-row">
+                    <div class="tool-bentoCard meta-card">
+                        <span class="meta-label">Resolução</span>
+                        <span id="meta-res" class="meta-value">—</span>
+                    </div>
+                    <div class="tool-bentoCard meta-card">
+                        <span class="meta-label">Framerate</span>
+                        <span id="meta-fps" class="meta-value">—</span>
+                    </div>
+                    <div class="tool-bentoCard meta-card meta-duration">
+                        <span class="meta-label">Duração Total</span>
+                        <span id="meta-duracao" class="meta-big">—</span>
+                    </div>
                 </div>
             </div>
-        </section>
+        </div>
 
-        <section id="aba-configs" class="section">
-            <div class="section-header">
-                <h2 class="title">Ajustes da Engine</h2>
-                <p class="subtitle">Configuração da IA</p>
-            </div>
-            <div class="tools-grid">
-                <div class="tool-bentoCard empty-state">
-                    <img src="assets/img/settings.svg" alt="Settings" class="set-icon">
-                    <p>Painel em desenvolvimento</p>
+        <!-- Painel de resultado da IA -->
+        <div id="painel-ia" class="painel-ia hidden">
+
+            <!-- Transcrição -->
+            <div class="tool-bentoCard transcription-card">
+                <div class="card-header">
+                    <span class="card-status-dot"></span>
+                    <span class="card-label">Whisper Engine · Transcrição</span>
+                    <div style="margin-left:auto;display:flex;flex-direction:column;align-items:flex-end;gap:2px;">
+                        <span id="ia-meta-info"        class="ia-meta-chip"></span>
+                        <span id="tempo-processamento" class="ia-tempo-chip"></span>
+                    </div>
+                </div>
+                <div class="transcription-box">
+                    <p id="texto-transcricao">Aguardando sinal do servidor...</p>
                 </div>
             </div>
-        </section>
 
-    </main>
+            <!-- Corte viral -->
+            <div class="tool-bentoCard cut-card">
+                <div class="card-header highlight">
+                    <span class="card-label">Corte Viral Encontrado</span>
+                </div>
 
-    <script src="./js/config.js"></script>
-    <script src="./js/auth.js"></script>
-    <script src="./js/app.js"></script>
+                <div class="cut-time">
+                    <div>
+                        <span class="meta-label">Início</span>
+                        <span id="corte-inicio" class="cut-value">00:00:00</span>
+                    </div>
+                    <div class="cut-separator">—</div>
+                    <div>
+                        <span class="meta-label">Fim</span>
+                        <span id="corte-fim" class="cut-value highlight-text">00:00:00</span>
+                    </div>
+                </div>
+
+                <div class="cut-reason">
+                    <span class="meta-label">Motivo do Algoritmo</span>
+                    <p id="corte-motivo">...</p>
+                </div>
+
+                <!--
+                    #area-download é preenchido pelo app.js com:
+                    - <video> player
+                    - botão "▶ Assistir"
+                    - botão "⬇ Baixar MP4"
+                -->
+                <div id="area-download" class="cut-download"></div>
+
+                <button onclick="resetarNovoCorte()" class="btn-secondary">
+                    Analisar Outro Vídeo
+                </button>
+            </div>
+        </div>
+
+    </section>
+
+    <!-- ══ ABA: MEUS CONTEÚDOS ════════════════════════════════ -->
+    <section id="aba-conteudos" class="section">
+        <div class="section-header">
+            <h2 class="title">Meus Conteúdos</h2>
+            <p class="subtitle">Sua esteira de cortes aprovados.</p>
+        </div>
+        <div class="tools-grid">
+            <div class="tool-bentoCard empty-state">
+                <img src="assets/img/content.svg" alt="content" class="content-icon">
+                <h3 class="upload-title">Vazio por aqui</h3>
+                <p class="upload-subtitle">Inicie fazendo o upload do seu primeiro arquivo bruto.</p>
+                <button onclick="mudarAba('inicio')" class="btn-voltaInicio">Criar Projeto</button>
+            </div>
+        </div>
+    </section>
+
+    <!-- ══ ABA: FERRAMENTAS ═══════════════════════════════════ -->
+    <section id="aba-ferramentas" class="section">
+        <div class="section-header">
+            <h2 class="title">Ferramentas Extras</h2>
+            <p class="subtitle">Utilitários de alta performance.</p>
+        </div>
+
+        <div class="tools-grid">
+
+            <!-- YouTube Clipper -->
+            <div class="tool-bentoCard tool-card">
+                <div class="tool-header">
+                    <img src="assets/img/youtubeLogo.svg" alt="YT" class="yt-icon">
+                    <div>
+                        <h3 class="tool-title">YouTube Clipper</h3>
+                        <p class="tool-description">Cole o link — a IA recorta o melhor trecho</p>
+                    </div>
+                </div>
+
+                <label class="input-label">URL do Vídeo</label>
+                <input
+                    type="url"
+                    id="input-youtube"
+                    class="input-field"
+                    placeholder="https://youtube.com/watch?v=..."
+                    autocomplete="off"
+                >
+
+                <!-- Botão principal: processa com IA -->
+                <button
+                    id="btn-yt-processar"
+                    onclick="processarYouTube()"
+                    class="btn-yt btn-yt-primary">
+                    PROCESSAR COM IA ⚡
+                </button>
+
+                <div class="yt-divider">ou</div>
+
+                <!-- Botão secundário: só baixa -->
+                <button
+                    id="btn-yt-baixar"
+                    onclick="baixarYouTube()"
+                    class="btn-yt btn-yt-secondary">
+                    SÓ BAIXAR (MP4)
+                </button>
+            </div>
+
+            <!-- Módulo em construção -->
+            <div class="tool-bentoCard empty-tool">
+                <p>Mais módulos em breve</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ══ ABA: CONFIGS ═══════════════════════════════════════ -->
+    <section id="aba-configs" class="section">
+        <div class="section-header">
+            <h2 class="title">Ajustes da Engine</h2>
+            <p class="subtitle">Configuração da IA</p>
+        </div>
+        <div class="tools-grid">
+            <div class="tool-bentoCard empty-state">
+                <img src="assets/img/settings.svg" alt="Settings" class="set-icon">
+                <p>Painel em desenvolvimento</p>
+            </div>
+        </div>
+    </section>
+
+</main>
+
+<script src="./js/config.js"></script>
+<script src="./js/auth.js"></script>
+<script src="./js/app.js"></script>
 </body>
-
 </html>

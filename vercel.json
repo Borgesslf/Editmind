@@ -1,0 +1,13 @@
+{
+  "version": 2,
+  "routes": [
+    { "src": "/",            "dest": "/home.html"  },
+    { "src": "/app",         "dest": "/index.html" },
+    { "src": "/login",       "dest": "/login.html" },
+    { "src": "/cadastro",    "dest": "/cadastro.html" },
+    { "src": "/demo",        "dest": "/demo.html" },
+    { "src": "/esqueci",     "dest": "/esqueci-senha.html" },
+    { "src": "/redefinir",   "dest": "/redefinir-senha.html" },
+    { "src": "/(.*)",        "dest": "/$1" }
+  ]
+}

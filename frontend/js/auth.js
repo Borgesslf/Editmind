@@ -1,12 +1,11 @@
 /* ============================================================
-   EditMind — js/auth.js v2.1
-   Sistema de autenticação real (Supabase via FastAPI).
+   EditMind — js/auth.js  v3.0
+   Autenticação via FastAPI + Supabase.
 
-   Melhorias:
-   - Sem variáveis globais poluindo window (usa módulo objeto)
-   - Token expiry check antes de cada requisição
-   - Mensagens de erro específicas por tipo de falha
-   - modoDemo() redireciona para demo.html em vez de simular login
+   Novidades v3.0:
+   - esquecerSenha(email)  — dispara e-mail de reset
+   - redefinirSenha(token, novaSenha) — atualiza senha
+   - AbortSignal.timeout() em todas as chamadas
    ============================================================ */
 
 const Auth = Object.freeze({
@@ -14,8 +13,8 @@ const Auth = Object.freeze({
     // ── Leitura de sessão ─────────────────────────────────────
 
     estaLogado() {
-        const token = localStorage.getItem(CONFIG.TOKEN_KEY);
-        return Boolean(token && token !== 'null' && token !== 'undefined');
+        const t = localStorage.getItem(CONFIG.TOKEN_KEY);
+        return Boolean(t && t !== 'null' && t !== 'undefined');
     },
 
     getToken() {
@@ -27,20 +26,17 @@ const Auth = Object.freeze({
             const raw = localStorage.getItem(CONFIG.USER_KEY);
             return raw ? JSON.parse(raw) : null;
         } catch {
-            // JSON corrompido — limpa
             localStorage.removeItem(CONFIG.USER_KEY);
             return null;
         }
     },
 
-    // ── Escrita de sessão ─────────────────────────────────────
+    // ── Sessão ────────────────────────────────────────────────
 
-    _salvarSessao(token, usuario) {
+    _salvar(token, usuario) {
         localStorage.setItem(CONFIG.TOKEN_KEY, token);
         localStorage.setItem(CONFIG.USER_KEY, JSON.stringify(usuario));
     },
-
-    // ── Logout ────────────────────────────────────────────────
 
     logout() {
         localStorage.removeItem(CONFIG.TOKEN_KEY);
@@ -48,106 +44,73 @@ const Auth = Object.freeze({
         window.location.href = 'home.html';
     },
 
-    // ── Guard de rota ─────────────────────────────────────────
-
-    exigirLogin(destino = 'login.html') {
-        if (!this.estaLogado()) {
-            window.location.href = destino;
-            return false;
-        }
+    exigirLogin(dest = 'login.html') {
+        if (!this.estaLogado()) { window.location.href = dest; return false; }
         return true;
     },
 
-    // ── Modo Demo ─────────────────────────────────────────────
-    // Redireciona para demo.html em vez de simular login real.
-    // Isso mantém a separação entre demo e produção.
+    modoDemo() { window.location.href = 'demo.html'; },
 
-    modoDemo() {
-        window.location.href = 'demo.html';
+    // ── Chamada genérica ao backend ───────────────────────────
+
+    async _post(rota, body, timeout = 15000) {
+        try {
+            const res = await fetch(`${CONFIG.API_URL}${rota}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                signal: AbortSignal.timeout(timeout),
+                body: JSON.stringify(body),
+            });
+            const dados = await res.json();
+            if (res.ok) return { sucesso: true, ...dados };
+            return { sucesso: false, erro: dados.detail || 'Erro desconhecido.' };
+        } catch (err) {
+            if (err.name === 'TimeoutError') return { sucesso: false, erro: 'Servidor demorou. Tente novamente.' };
+            return { sucesso: false, erro: 'Sem conexão com o servidor.' };
+        }
     },
 
-    // ── Login real (Supabase via backend) ─────────────────────
+    // ── Login ─────────────────────────────────────────────────
 
     async login(email, senha) {
-        if (!email || !senha) {
-            return { sucesso: false, erro: 'Preencha todos os campos.' };
-        }
-        if (senha.length < 6) {
-            return { sucesso: false, erro: 'Senha deve ter pelo menos 6 caracteres.' };
-        }
+        if (!email || !senha) return { sucesso: false, erro: 'Preencha todos os campos.' };
+        if (senha.length < 6) return { sucesso: false, erro: 'Senha mínima: 6 caracteres.' };
 
-        try {
-            const res = await fetch(`${CONFIG.API_URL}/api/auth/login`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                // timeout manual via AbortController
-                signal: AbortSignal.timeout(15000),
-                body: JSON.stringify({ email, senha }),
-            });
-
-            const dados = await res.json();
-
-            if (res.ok && dados.sucesso) {
-                this._salvarSessao(dados.token, dados.usuario);
-                return { sucesso: true };
-            }
-
-            return {
-                sucesso: false,
-                erro: dados.detail || 'E-mail ou senha incorretos.',
-            };
-
-        } catch (err) {
-            if (err.name === 'TimeoutError') {
-                return { sucesso: false, erro: 'Servidor demorou demais. Tente novamente.' };
-            }
-            if (err.name === 'TypeError') {
-                return { sucesso: false, erro: 'Sem conexão com o servidor.' };
-            }
-            return { sucesso: false, erro: 'Erro inesperado. Tente novamente.' };
-        }
+        const res = await this._post('/api/auth/login', { email, senha });
+        if (res.sucesso && res.token) this._salvar(res.token, res.usuario || { email });
+        return res;
     },
 
-    // ── Cadastro real (Supabase via backend) ──────────────────
+    // ── Cadastro ──────────────────────────────────────────────
 
     async cadastrar(nome, email, senha) {
-        if (!email || !senha) {
-            return { sucesso: false, erro: 'Preencha todos os campos.' };
-        }
-        if (senha.length < 6) {
-            return { sucesso: false, erro: 'Senha deve ter pelo menos 6 caracteres.' };
-        }
+        if (!email || !senha) return { sucesso: false, erro: 'Preencha todos os campos.' };
+        if (senha.length < 6) return { sucesso: false, erro: 'Senha mínima: 6 caracteres.' };
 
-        try {
-            const res = await fetch(`${CONFIG.API_URL}/api/auth/cadastro`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                signal: AbortSignal.timeout(15000),
-                body: JSON.stringify({ email, senha }),
-            });
+        const res = await this._post('/api/auth/cadastro', { email, senha });
+        if (res.sucesso && res.token) this._salvar(res.token, res.usuario || { email });
+        return res;
+    },
 
-            const dados = await res.json();
+    // ── Esqueci a senha ───────────────────────────────────────
+    // Envia e-mail com link de recovery para o usuário.
+    // O backend chama supabase.auth.reset_password_email()
+    // que redireciona para /redefinir-senha.html#access_token=...
 
-            if (res.ok && dados.sucesso) {
-                if (dados.token) {
-                    this._salvarSessao(dados.token, dados.usuario || { email });
-                    return { sucesso: true };
-                }
-                // Supabase pediu confirmação de email
-                return { sucesso: true, msg: dados.msg || 'Confirme o seu e-mail para continuar.' };
-            }
+    async esquecerSenha(email) {
+        if (!email) return { sucesso: false, erro: 'Informe o e-mail.' };
+        return await this._post('/api/auth/esqueci-senha', { email });
+    },
 
-            return {
-                sucesso: false,
-                erro: dados.detail || 'Erro ao criar conta.',
-            };
+    // ── Redefinir senha ───────────────────────────────────────
+    // Chamado na página redefinir-senha.html após extrair
+    // o token do hash da URL.
 
-        } catch (err) {
-            if (err.name === 'TimeoutError') {
-                return { sucesso: false, erro: 'Servidor demorou demais. Tente novamente.' };
-            }
-            return { sucesso: false, erro: 'Erro de conexão. Verifique sua internet.' };
-        }
+    async redefinirSenha(token, novaSenha) {
+        if (!token)           return { sucesso: false, erro: 'Token inválido.' };
+        if (novaSenha.length < 6) return { sucesso: false, erro: 'Senha mínima: 6 caracteres.' };
+        return await this._post('/api/auth/redefinir-senha',
+            { token, nova_senha: novaSenha });
     },
 });
 

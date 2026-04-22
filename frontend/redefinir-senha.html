@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EditMind — Nova Senha</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800;900&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .glass { background: rgba(255,255,255,0.03); backdrop-filter: blur(20px); }
+    </style>
+</head>
+<body class="bg-[#0b0d11] text-gray-100 min-h-screen flex flex-col">
+
+    <header class="w-full flex justify-between items-center px-6 md:px-12 py-8">
+        <a href="home.html" class="no-underline hover:scale-105 transition-transform inline-block">
+            <h1 class="text-3xl font-black italic tracking-tighter text-white">
+                EDIT<span class="text-[#f97316] drop-shadow-[0_0_15px_rgba(249,115,22,0.5)]">MIND</span>
+            </h1>
+        </a>
+    </header>
+
+    <main class="flex-1 flex items-center justify-center px-4 py-8">
+        <div class="w-full max-w-md">
+
+            <!-- Estado: Token inválido ou ausente -->
+            <div id="estado-invalido" class="hidden glass rounded-[2rem] p-8 border border-gray-800 text-center">
+                <div class="w-16 h-16 bg-red-500/10 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                    <svg class="w-8 h-8 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                            d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                    </svg>
+                </div>
+                <h3 class="text-xl font-black text-white mb-3">Link inválido ou expirado</h3>
+                <p class="text-gray-400 text-sm mb-6">
+                    Este link de recuperação não é válido ou já foi utilizado. Solicite um novo.
+                </p>
+                <a href="esqueci-senha.html"
+                   class="inline-block bg-[#f97316] text-white font-black py-3 px-8 rounded-full text-xs uppercase tracking-widest hover:scale-105 transition-all">
+                    Solicitar Novo Link
+                </a>
+            </div>
+
+            <!-- Estado: Formulário de nova senha -->
+            <div id="estado-form" class="hidden glass rounded-[2rem] p-8 md:p-12 border border-gray-800">
+
+                <div class="text-center mb-8">
+                    <div class="w-16 h-16 bg-[#f97316]/10 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                        <svg class="w-8 h-8 text-[#f97316]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                        </svg>
+                    </div>
+                    <h2 class="text-2xl font-black text-white tracking-tight mb-2">Criar nova senha</h2>
+                    <p class="text-gray-500 text-sm">Escolha uma senha com pelo menos 6 caracteres.</p>
+                </div>
+
+                <form id="form-nova-senha" class="space-y-5">
+                    <div>
+                        <label class="block text-[10px] font-black text-gray-500 uppercase tracking-widest mb-2">
+                            Nova senha
+                        </label>
+                        <div class="relative">
+                            <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                        d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                                </svg>
+                            </div>
+                            <input
+                                type="password" id="nova-senha" placeholder="••••••••" required minlength="6"
+                                class="w-full bg-black/40 border border-gray-800 rounded-xl pl-11 pr-4 py-3.5 text-sm text-white focus:border-[#f97316]/60 outline-none transition-all placeholder-gray-600"
+                            >
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-[10px] font-black text-gray-500 uppercase tracking-widest mb-2">
+                            Confirmar nova senha
+                        </label>
+                        <div class="relative">
+                            <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                </svg>
+                            </div>
+                            <input
+                                type="password" id="confirmar-senha" placeholder="••••••••" required minlength="6"
+                                class="w-full bg-black/40 border border-gray-800 rounded-xl pl-11 pr-4 py-3.5 text-sm text-white focus:border-[#f97316]/60 outline-none transition-all placeholder-gray-600"
+                            >
+                        </div>
+                    </div>
+
+                    <button type="submit" id="btn-salvar"
+                        class="w-full bg-[#f97316] hover:bg-[#ea580c] text-white font-black py-4 rounded-xl text-xs uppercase tracking-widest shadow-[0_10px_25px_rgba(249,115,22,0.3)] transition-all hover:scale-[1.02] active:scale-[0.98]">
+                        Salvar Nova Senha
+                    </button>
+
+                    <div id="msg-erro" class="hidden text-center">
+                        <p class="text-red-400 text-xs font-semibold"></p>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Estado: Sucesso -->
+            <div id="estado-sucesso" class="hidden glass rounded-[2rem] p-8 border border-gray-800 text-center">
+                <div class="w-16 h-16 bg-green-500/10 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                    <svg class="w-8 h-8 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                            d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                </div>
+                <h3 class="text-xl font-black text-white mb-3">Senha atualizada! ✅</h3>
+                <p class="text-gray-400 text-sm mb-6">Sua senha foi alterada com sucesso. Faça login com a nova senha.</p>
+                <a href="login.html"
+                   class="inline-block bg-[#f97316] text-white font-black py-3 px-8 rounded-full text-xs uppercase tracking-widest hover:scale-105 transition-all">
+                    Ir para o Login
+                </a>
+            </div>
+
+        </div>
+    </main>
+
+    <footer class="w-full text-center py-6 border-t border-gray-800/50">
+        <p class="text-xs font-semibold text-gray-700 tracking-widest uppercase">EditMind © 2026</p>
+    </footer>
+
+    <script src="js/config.js"></script>
+    <script src="js/auth.js"></script>
+    <script>
+        /**
+         * O Supabase envia o link de reset com o token no HASH da URL:
+         * https://seusite.com/redefinir-senha.html#access_token=XXX&type=recovery
+         *
+         * Aqui extraímos esse token e o usamos para redefinir a senha via backend.
+         */
+        (function init() {
+            // Extrai parâmetros do hash (#access_token=...&type=recovery)
+            const hash   = window.location.hash.substring(1); // remove o #
+            const params = new URLSearchParams(hash);
+            const token  = params.get('access_token');
+            const type   = params.get('type');
+
+            if (!token || type !== 'recovery') {
+                // Token ausente ou não é de recovery — mostra erro
+                document.getElementById('estado-invalido').classList.remove('hidden');
+                return;
+            }
+
+            // Token válido — mostra o formulário
+            document.getElementById('estado-form').classList.remove('hidden');
+
+            document.getElementById('form-nova-senha').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const btn     = document.getElementById('btn-salvar');
+                const erroEl  = document.getElementById('msg-erro');
+                const erroP   = erroEl.querySelector('p');
+                const nova    = document.getElementById('nova-senha').value;
+                const confirm = document.getElementById('confirmar-senha').value;
+
+                erroEl.classList.add('hidden');
+
+                if (nova !== confirm) {
+                    erroP.textContent = 'As senhas não coincidem.';
+                    erroEl.classList.remove('hidden');
+                    return;
+                }
+
+                btn.disabled    = true;
+                btn.textContent = 'Salvando...';
+
+                const res = await Auth.redefinirSenha(token, nova);
+
+                if (res.sucesso) {
+                    document.getElementById('estado-form').classList.add('hidden');
+                    document.getElementById('estado-sucesso').classList.remove('hidden');
+                } else {
+                    erroP.textContent = res.erro || 'Erro ao atualizar a senha.';
+                    erroEl.classList.remove('hidden');
+                    btn.disabled    = false;
+                    btn.textContent = 'Salvar Nova Senha';
+                }
+            });
+        })();
+    </script>
+</body>
+</html>

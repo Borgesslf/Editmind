@@ -1,339 +1,146 @@
 /* ============================================================
-   EditMind — js/app.js v2.1
+   EditMind — js/app.js  v3.0
 
-   Melhorias:
-   - XHR substituído por fetch() com AbortController (timeout real)
-   - Cronômetro ao vivo durante o processamento
-   - Meta cards animados (resolução, fps, duração)
-   - Auth guard no DOMContentLoaded
-   - Feedback visual em todas as etapas do pipeline
-   - Campos do formulário compatíveis com o backend (field: 'file')
+   Novidades:
+   - Módulo YouTube: "Processar com IA" (não só baixar)
+   - Video player no painel de resultado
+   - Botões "▶ Assistir" e "⬇ Baixar" separados
+   - Fetch com AbortController (timeout 5min)
+   - Auth guard + logout
    ============================================================ */
 
-// ── Configuração ──────────────────────────────────────────────
-const API_BASE_URL    = window.CONFIG?.API_URL ?? '';
-const TIMEOUT_MS      = 5 * 60 * 1000; // 5 minutos (processamento pode demorar)
+const API       = window.CONFIG?.API_URL ?? '';
+const TIMEOUT   = 5 * 60 * 1000; // 5 minutos
 
-// ── Referências ao DOM ────────────────────────────────────────
-const $ = (id) => document.getElementById(id);
+// ── DOM ───────────────────────────────────────────────────────
+const $ = id => document.getElementById(id);
 
-const painelUpload      = $('painel-upload');
-const painelIa          = $('painel-ia');
-const areaSoltar        = $('area-soltar');
-const entradaArquivo    = $('entrada-arquivo');
-const nomeArquivoTexto  = $('nome-arquivo');
-const barraProgresso    = $('barra-progresso');
-const porcentagemTexto  = $('porcentagem-envio');
-const mensagemTexto     = $('mensagem-envio');
-const metaRes           = $('meta-res');
-const metaFps           = $('meta-fps');
-const metaDuracao       = $('meta-duracao');
-const textoTranscricao  = $('texto-transcricao');
-const corteInicio       = $('corte-inicio');
-const corteFim          = $('corte-fim');
-const corteMotivo       = $('corte-motivo');
+const painelUpload  = $('painel-upload');
+const painelIa      = $('painel-ia');
+const areaSoltar    = $('area-soltar');
+const entrada       = $('entrada-arquivo');
+const nomeArq       = $('nome-arquivo');
+const barraP        = $('barra-progresso');
+const porcT         = $('porcentagem-envio');
+const msgT          = $('mensagem-envio');
+const metaRes       = $('meta-res');
+const metaFps       = $('meta-fps');
+const metaDur       = $('meta-duracao');
+const txtTransc     = $('texto-transcricao');
+const corteIni      = $('corte-inicio');
+const corteFim      = $('corte-fim');
+const corteMot      = $('corte-motivo');
 
-window.ultimoResultadoIA = null;
+window.ultimoResultado = null;
 
-// ── Auth Guard + Init ─────────────────────────────────────────
+// ── INIT ──────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
-    // Redireciona para login se não estiver autenticado
-    if (!window.Auth?.estaLogado()) {
-        window.location.href = 'login.html';
-        return;
-    }
+    if (!window.Auth?.estaLogado()) { window.location.href = 'login.html'; return; }
 
-    // Mostra nome do usuário no header (se existir o elemento)
-    const usuario = window.Auth.getUsuario();
-    const elUser  = $('user-nome');
-    if (elUser && usuario) {
-        elUser.textContent = usuario.nome || usuario.email?.split('@')[0] || 'Usuário';
-    }
+    const u   = window.Auth.getUsuario();
+    const el  = $('user-nome');
+    if (el && u) el.textContent = u.nome || u.email?.split('@')[0] || 'Usuário';
 
-    // Botão de logout
-    const btnLogout = $('btn-logout');
-    if (btnLogout) {
-        btnLogout.addEventListener('click', () => window.Auth.logout());
-    }
+    $('btn-logout')?.addEventListener('click', () => window.Auth.logout());
 
-    // Nav toggle (menu hamburguer)
-    const navToggle = $('navToggle');
-    const btnNav    = $('btnNav');
-    if (navToggle && btnNav) {
-        navToggle.addEventListener('click', (e) => {
-            e.stopPropagation();
-            btnNav.classList.toggle('open');
-        });
-        document.addEventListener('click', (e) => {
-            if (!btnNav.contains(e.target)) btnNav.classList.remove('open');
-        });
+    // Nav hamburguer
+    const toggle = $('navToggle'), nav = $('btnNav');
+    if (toggle && nav) {
+        toggle.addEventListener('click', e => { e.stopPropagation(); nav.classList.toggle('open'); });
+        document.addEventListener('click', e => { if (!nav.contains(e.target)) nav.classList.remove('open'); });
     }
 });
 
-// ── Cronômetro ────────────────────────────────────────────────
-let _timerInterval = null;
-let _timerStart    = null;
+// ── TIMER ─────────────────────────────────────────────────────
+let _iv = null, _t0 = null;
 
-function iniciarTimer() {
-    _timerStart    = Date.now();
-    _timerInterval = setInterval(() => {
-        const elapsed = Math.floor((Date.now() - _timerStart) / 1000);
-        const m = String(Math.floor(elapsed / 60)).padStart(2, '0');
-        const s = String(elapsed % 60).padStart(2, '0');
+function startTimer() {
+    _t0 = Date.now();
+    _iv = setInterval(() => {
+        const s = Math.floor((Date.now() - _t0) / 1000);
         const el = $('timer-display');
-        if (el) el.textContent = `${m}:${s}`;
+        if (el) el.textContent =
+            `${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;
     }, 1000);
 }
 
-function pararTimer() {
-    clearInterval(_timerInterval);
-    _timerInterval = null;
-    const elapsed  = _timerStart ? Math.floor((Date.now() - _timerStart) / 1000) : 0;
-    _timerStart    = null;
-    return elapsed;
+function stopTimer() {
+    clearInterval(_iv); _iv = null;
+    const e = _t0 ? Math.floor((Date.now() - _t0) / 1000) : 0;
+    _t0 = null; return e;
 }
 
-// ── Helpers de UI ─────────────────────────────────────────────
-function setProgresso(pct) {
-    if (barraProgresso)    barraProgresso.style.width   = `${pct}%`;
-    if (porcentagemTexto)  porcentagemTexto.textContent = `${pct}%`;
+// ── UI HELPERS ────────────────────────────────────────────────
+function pct(v) {
+    if (barraP) barraP.style.width  = v + '%';
+    if (porcT)  porcT.textContent   = v + '%';
 }
 
-function setMensagem(html, cor = '#6b7280') {
-    if (!mensagemTexto) return;
-    mensagemTexto.innerHTML   = html;
-    mensagemTexto.style.color = cor;
+function msg(html, cor = '#6b7280') {
+    if (!msgT) return;
+    msgT.innerHTML   = html;
+    msgT.style.color = cor;
 }
 
-function animarMetaCard(elemento, valor) {
-    if (!elemento) return;
-    elemento.style.transition = 'none';
-    elemento.style.opacity    = '0';
-    elemento.style.transform  = 'translateY(6px)';
-    elemento.textContent      = valor;
+function animCard(el, val) {
+    if (!el) return;
+    el.style.transition = 'none'; el.style.opacity = '0'; el.style.transform = 'translateY(6px)';
+    el.textContent = val;
     requestAnimationFrame(() => requestAnimationFrame(() => {
-        elemento.style.transition = 'opacity 0.4s ease, transform 0.4s ease';
-        elemento.style.opacity    = '1';
-        elemento.style.transform  = 'translateY(0)';
+        el.style.transition = 'opacity .4s ease, transform .4s ease';
+        el.style.opacity    = '1'; el.style.transform = 'translateY(0)';
     }));
 }
 
 function resetUI() {
-    setProgresso(0);
-    setMensagem('Motor em standby.');
-    if (barraProgresso)   barraProgresso.style.background = '';
-    if (nomeArquivoTexto) nomeArquivoTexto.textContent    = 'Aguardando feed...';
-    if (metaRes)          metaRes.textContent    = '—';
-    if (metaFps)          metaFps.textContent    = '—';
-    if (metaDuracao)      metaDuracao.textContent = '—';
-    if (entradaArquivo)   entradaArquivo.value    = '';
-    const el = $('timer-display');
-    if (el) el.textContent = '00:00';
+    pct(0); msg('Motor em standby.');
+    if (barraP)  barraP.style.background = '';
+    if (nomeArq) nomeArq.textContent     = 'Aguardando feed...';
+    if (metaRes) metaRes.textContent     = '—';
+    if (metaFps) metaFps.textContent     = '—';
+    if (metaDur) metaDur.textContent     = '—';
+    if (entrada) entrada.value           = '';
+    const te = $('timer-display'); if (te) te.textContent = '00:00';
 }
 
-// ── Drag & Drop ───────────────────────────────────────────────
+// ── DRAG & DROP ───────────────────────────────────────────────
 if (areaSoltar) {
-    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach((evt) =>
-        areaSoltar.addEventListener(evt, (e) => { e.preventDefault(); e.stopPropagation(); })
-    );
-
-    ['dragenter', 'dragover'].forEach((evt) =>
-        areaSoltar.addEventListener(evt, () => {
-            areaSoltar.style.borderColor = '#f97316';
-            areaSoltar.style.background  = 'rgba(249,115,22,0.06)';
-        })
-    );
-
-    ['dragleave', 'drop'].forEach((evt) =>
-        areaSoltar.addEventListener(evt, () => {
-            areaSoltar.style.borderColor = '';
-            areaSoltar.style.background  = '';
-        })
-    );
-
-    areaSoltar.addEventListener('drop', (e) => processarArquivos(e.dataTransfer.files));
+    ['dragenter','dragover','dragleave','drop'].forEach(e =>
+        areaSoltar.addEventListener(e, ev => { ev.preventDefault(); ev.stopPropagation(); }));
+    ['dragenter','dragover'].forEach(e =>
+        areaSoltar.addEventListener(e, () => { areaSoltar.style.borderColor='#f97316'; areaSoltar.style.background='rgba(249,115,22,0.06)'; }));
+    ['dragleave','drop'].forEach(e =>
+        areaSoltar.addEventListener(e, () => { areaSoltar.style.borderColor=''; areaSoltar.style.background=''; }));
+    areaSoltar.addEventListener('drop', e => processar(e.dataTransfer.files));
 }
+if (entrada) entrada.addEventListener('change', e => processar(e.target.files));
 
-if (entradaArquivo) {
-    entradaArquivo.addEventListener('change', (e) => processarArquivos(e.target.files));
-}
-
-// ── Pipeline principal ────────────────────────────────────────
-async function processarArquivos(arquivos) {
+// ── PIPELINE PRINCIPAL ────────────────────────────────────────
+async function processar(arquivos) {
     if (!arquivos?.length) return;
-
-    const arquivo = arquivos[0];
-    const ext     = arquivo.name.split('.').pop().toLowerCase();
-
-    if (!['mp4', 'mov', 'avi', 'webm'].includes(ext)) {
-        alert('EditMind aceita apenas vídeos: mp4, mov, avi ou webm.');
+    const arq = arquivos[0];
+    const ext = arq.name.split('.').pop().toLowerCase();
+    if (!['mp4','mov','avi','webm'].includes(ext)) {
+        alert('Aceito apenas: mp4, mov, avi, webm.');
         return;
     }
-
-    // ── Setup visual ──────────────────────────────────────────
-    if (nomeArquivoTexto) nomeArquivoTexto.textContent = arquivo.name;
-    if (barraProgresso)   barraProgresso.style.background = 'linear-gradient(to right, #f97316, #facc15)';
-    iniciarTimer();
-
-    // Etapas visuais simuladas (feedback enquanto o backend processa)
-    const etapas = [
-        { pct: 10, msg: '📤 Enviando vídeo...',                delay: 0     },
-        { pct: 25, msg: '🎵 FFmpeg extraindo áudio...',        delay: 5000  },
-        { pct: 50, msg: '🎙️ Whisper-1 transcrevendo...',      delay: 12000 },
-        { pct: 70, msg: '✏️ GPT-4o-mini corrigindo texto...', delay: 22000 },
-        { pct: 85, msg: '🤖 GPT-4o analisando viralidade...',  delay: 30000 },
-        { pct: 93, msg: '✂️ FFmpeg cortando o trecho...',      delay: 40000 },
-    ];
-
-    const timeouts = etapas.map(({ pct, msg, delay }) =>
-        setTimeout(() => { setProgresso(pct); setMensagem(msg); }, delay)
-    );
-
-    // FormData com campo 'file' (compatível com o backend)
-    const dados = new FormData();
-    dados.append('file', arquivo);
-
-    const token = window.Auth?.getToken();
-
-    const controller = new AbortController();
-    const timeoutId  = setTimeout(() => controller.abort(), TIMEOUT_MS);
-
-    try {
-        const resposta = await fetch(`${API_BASE_URL}/api/processar`, {
+    await _executar(async (ctrl) => {
+        const form = new FormData();
+        form.append('file', arq);
+        if (nomeArq) nomeArq.textContent = arq.name;
+        return fetch(`${API}/api/processar`, {
             method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'ngrok-skip-browser-warning': 'true',
-            },
-            body: dados,
-            signal: controller.signal,
+            headers: { 'Authorization': `Bearer ${window.Auth.getToken()}` },
+            body: form,
+            signal: ctrl.signal,
         });
-
-        clearTimeout(timeoutId);
-        timeouts.forEach(clearTimeout);
-
-        const resultado  = await resposta.json();
-        const tempoTotal = pararTimer();
-
-        if (!resposta.ok) {
-            // Token expirado — redireciona para login
-            if (resposta.status === 401) {
-                window.Auth?.logout();
-                return;
-            }
-            throw new Error(resultado.detail || `Erro ${resposta.status}`);
-        }
-
-        // ── Atualiza meta cards com animação ──────────────────
-        const infos = resultado.detalhes_tecnicos || {};
-        animarMetaCard(metaRes,     infos.resolucao || 'N/A');
-        animarMetaCard(metaFps,     infos.fps ? `${infos.fps} FPS` : 'N/A');
-        animarMetaCard(metaDuracao, infos.duracao_segundos ? `${infos.duracao_segundos}s` : 'N/A');
-
-        setProgresso(100);
-        window.ultimoResultadoIA = { ...resultado, tempoTotal };
-
-        const mm = String(Math.floor(tempoTotal / 60)).padStart(2, '0');
-        const ss = String(tempoTotal % 60).padStart(2, '0');
-
-        setMensagem(`
-            <div style="display:flex;flex-direction:column;gap:10px;margin-top:10px;">
-                <div style="display:inline-flex;align-items:center;gap:8px;font-size:11px;color:#22c55e;font-weight:700;">
-                    <span style="width:8px;height:8px;border-radius:50%;background:#22c55e;display:inline-block;"></span>
-                    Concluído em ${mm}:${ss}
-                </div>
-                <button
-                    onclick="acionarTelaIA()"
-                    style="padding:12px 28px;background:#f97316;color:white;border:none;
-                           border-radius:999px;font-size:11px;font-weight:900;
-                           letter-spacing:0.12em;cursor:pointer;
-                           box-shadow:0 8px 24px rgba(249,115,22,0.4);transition:transform .2s;"
-                    onmouseover="this.style.transform='scale(1.05)'"
-                    onmouseout="this.style.transform='scale(1)'">
-                    Ver Relatório da IA ⚡
-                </button>
-            </div>
-        `, '#22c55e');
-
-    } catch (erro) {
-        clearTimeout(timeoutId);
-        timeouts.forEach(clearTimeout);
-        pararTimer();
-
-        const msg = erro.name === 'AbortError'
-            ? '⏱️ Timeout: o processamento demorou mais de 5 minutos.'
-            : `❌ ${erro.message || 'Erro de conexão.'}`;
-
-        setMensagem(msg, '#ef4444');
-        if (barraProgresso) barraProgresso.style.background = '#ef4444';
-        setTimeout(resetUI, 6000);
-        console.error('[EditMind] Erro no pipeline:', erro);
-    }
+    });
 }
 
-// ── Exibe painel de resultado ─────────────────────────────────
-window.acionarTelaIA = function () {
-    if (window.ultimoResultadoIA) mostrarResultadosIA(window.ultimoResultadoIA);
-};
-
-function mostrarResultadosIA(resultado) {
-    if (painelUpload) painelUpload.classList.add('hidden');
-    if (painelIa)     painelIa.classList.remove('hidden', 'fade-out');
-
-    if (textoTranscricao) {
-        textoTranscricao.textContent = resultado.transcricao || 'Sem transcrição disponível.';
-    }
-
-    const corte = resultado.corte_sugerido;
-    if (corte) {
-        if (corteInicio) corteInicio.textContent = corte.inicio || '00:00:00';
-        if (corteFim)    corteFim.textContent    = corte.fim    || '00:00:00';
-        if (corteMotivo) corteMotivo.textContent = corte.motivo || '—';
-    }
-
-    // Tempo de processamento
-    if (resultado.tempoTotal !== undefined) {
-        const mm = String(Math.floor(resultado.tempoTotal / 60)).padStart(2, '0');
-        const ss = String(resultado.tempoTotal % 60).padStart(2, '0');
-        const el = $('tempo-processamento');
-        if (el) el.textContent = `Processado em ${mm}:${ss}`;
-    }
-
-    // Meta info
-    const infos  = resultado.detalhes_tecnicos || {};
-    const elMeta = $('ia-meta-info');
-    if (elMeta && infos.resolucao) {
-        elMeta.textContent = `${infos.resolucao} • ${infos.fps} FPS • ${infos.duracao_segundos}s`;
-    }
-
-    // Botão de download
-    const areaDownload = $('area-download');
-    if (areaDownload && resultado.url_corte) {
-        areaDownload.innerHTML = `
-            <a href="${API_BASE_URL}${resultado.url_corte}"
-               download="Corte_EditMind.mp4"
-               class="btn-download">
-                ⬇ Baixar Corte (MP4)
-            </a>
-        `;
-    }
-}
-
-window.resetarNovoCorte = function () {
-    if (painelIa) painelIa.classList.add('fade-out');
-    setTimeout(() => {
-        if (painelIa)     painelIa.classList.add('hidden');
-        if (painelIa)     painelIa.classList.remove('fade-out');
-        if (painelUpload) painelUpload.classList.remove('hidden');
-        resetUI();
-        window.ultimoResultadoIA = null;
-    }, 400);
-};
-
-// ── YouTube Downloader ────────────────────────────────────────
-async function baixarYouTube() {
+// ── PROCESSAR VIA YOUTUBE (pipeline completo) ─────────────────
+window.processarYouTube = async function () {
     const input = $('input-youtube');
-    const btn   = $('btn-youtube');
+    const btn   = $('btn-yt-processar');
     const link  = input?.value.trim();
 
     if (!link || (!link.includes('youtube.com') && !link.includes('youtu.be'))) {
@@ -341,53 +148,207 @@ async function baixarYouTube() {
         return;
     }
 
+    // Troca para a aba de upload e inicia feedback
+    mudarAba('inicio');
+    if (nomeArq) nomeArq.textContent = link;
+
     if (btn) { btn.disabled = true; btn.textContent = 'PROCESSANDO...'; }
 
-    const token = window.Auth?.getToken();
-
-    try {
-        const res = await fetch(`${API_BASE_URL}/api/download-youtube`, {
+    await _executar(async (ctrl) =>
+        fetch(`${API}/api/processar-youtube`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`,
+                'Authorization': `Bearer ${window.Auth.getToken()}`,
+            },
+            body: JSON.stringify({ url: link }),
+            signal: ctrl.signal,
+        })
+    );
+
+    if (btn) { btn.textContent = 'PROCESSAR COM IA ⚡'; btn.disabled = false; }
+    if (input) input.value = '';
+};
+
+// ── EXECUTOR GENÉRICO (compartilhado por upload e YouTube) ────
+async function _executar(fetchFn) {
+    if (barraP) barraP.style.background = 'linear-gradient(to right,#f97316,#facc15)';
+    startTimer();
+
+    const etapas = [
+        { p: 10, m: '📤 Enviando para o servidor...',         d: 0      },
+        { p: 25, m: '🎵 FFmpeg extraindo áudio...',           d: 5000   },
+        { p: 50, m: '🎙️ Whisper-1 transcrevendo...',         d: 12000  },
+        { p: 70, m: '✏️ GPT-4o-mini corrigindo texto...',    d: 22000  },
+        { p: 85, m: '🤖 GPT-4o analisando viralidade...',     d: 30000  },
+        { p: 93, m: '✂️ Cortando o trecho...',                d: 40000  },
+    ];
+    const tids = etapas.map(({ p, m, d }) => setTimeout(() => { pct(p); msg(m); }, d));
+
+    const ctrl = new AbortController();
+    const tId  = setTimeout(() => ctrl.abort(), TIMEOUT);
+
+    try {
+        const res     = await fetchFn(ctrl);
+        clearTimeout(tId); tids.forEach(clearTimeout);
+        const data    = await res.json();
+        const elapsed = stopTimer();
+
+        if (!res.ok) {
+            if (res.status === 401) { window.Auth.logout(); return; }
+            throw new Error(data.detail || `Erro ${res.status}`);
+        }
+
+        const infos = data.detalhes_tecnicos || {};
+        animCard(metaRes, infos.resolucao || 'N/A');
+        animCard(metaFps, infos.fps ? `${infos.fps} FPS` : 'N/A');
+        animCard(metaDur, infos.duracao_segundos ? `${infos.duracao_segundos}s` : 'N/A');
+
+        pct(100);
+        window.ultimoResultado = { ...data, elapsed };
+
+        const mm = String(Math.floor(elapsed/60)).padStart(2,'0');
+        const ss = String(elapsed%60).padStart(2,'0');
+        msg(`
+            <div style="display:flex;flex-direction:column;gap:10px;margin-top:10px;">
+                <span style="font-size:11px;color:#22c55e;font-weight:700;">
+                    ✅ Concluído em ${mm}:${ss}
+                </span>
+                <button onclick="mostrarResultado()"
+                    style="padding:12px 28px;background:#f97316;color:white;border:none;
+                           border-radius:999px;font-size:11px;font-weight:900;
+                           letter-spacing:.1em;cursor:pointer;
+                           box-shadow:0 8px 24px rgba(249,115,22,.4)">
+                    Ver Relatório da IA ⚡
+                </button>
+            </div>`, '#22c55e');
+
+    } catch (err) {
+        clearTimeout(tId); tids.forEach(clearTimeout); stopTimer();
+        const m_ = err.name === 'AbortError'
+            ? '⏱️ Timeout: processamento demorou mais de 5 minutos.'
+            : `❌ ${err.message || 'Erro desconhecido.'}`;
+        msg(m_, '#ef4444');
+        if (barraP) barraP.style.background = '#ef4444';
+        setTimeout(resetUI, 6000);
+    }
+}
+
+// ── PAINEL DE RESULTADO ───────────────────────────────────────
+window.mostrarResultado = function () {
+    if (window.ultimoResultado) exibirResultado(window.ultimoResultado);
+};
+
+function exibirResultado(data) {
+    if (painelUpload) painelUpload.classList.add('hidden');
+    if (painelIa)     { painelIa.classList.remove('hidden','fade-out'); }
+
+    // Transcrição
+    if (txtTransc) txtTransc.textContent = data.transcricao || '—';
+
+    // Tempos do corte
+    const c = data.corte_sugerido || {};
+    if (corteIni) corteIni.textContent = c.inicio || '00:00:00';
+    if (corteFim) corteFim.textContent = c.fim    || '00:00:00';
+    if (corteMot) corteMot.textContent = c.motivo || '—';
+
+    // Chips de meta
+    const inf = data.detalhes_tecnicos || {};
+    const em  = $('ia-meta-info');
+    if (em && inf.resolucao) em.textContent = `${inf.resolucao} • ${inf.fps} FPS • ${inf.duracao_segundos}s`;
+    if (data.elapsed !== undefined) {
+        const tp = $('tempo-processamento');
+        if (tp) tp.textContent =
+            `Processado em ${String(Math.floor(data.elapsed/60)).padStart(2,'0')}:${String(data.elapsed%60).padStart(2,'0')}`;
+    }
+
+    // ── Video player + botões ─────────────────────────────────
+    const area = $('area-download');
+    if (area && data.url_corte) {
+        const urlCorte = data.url_corte.startsWith('http')
+            ? data.url_corte           // Supabase Storage (URL absoluta)
+            : `${API}${data.url_corte}`; // Render local (/outputs/...)
+
+        area.innerHTML = `
+            <!-- Player -->
+            <div class="video-result-wrapper">
+                <video
+                    id="player-resultado"
+                    src="${urlCorte}"
+                    controls
+                    preload="metadata"
+                    class="video-result-player"
+                    poster=""
+                ></video>
+            </div>
+
+            <!-- Botões -->
+            <div class="result-btns">
+                <button
+                    class="btn-assistir"
+                    onclick="document.getElementById('player-resultado').play()">
+                    ▶ Assistir
+                </button>
+                <a
+                    href="${urlCorte}"
+                    download="Corte_EditMind.mp4"
+                    class="btn-download">
+                    ⬇ Baixar MP4
+                </a>
+            </div>
+        `;
+    }
+}
+
+window.resetarNovoCorte = function () {
+    if (painelIa) painelIa.classList.add('fade-out');
+    setTimeout(() => {
+        if (painelIa)     { painelIa.classList.add('hidden'); painelIa.classList.remove('fade-out'); }
+        if (painelUpload) painelUpload.classList.remove('hidden');
+        resetUI();
+        window.ultimoResultado = null;
+    }, 400);
+};
+
+// ── DOWNLOAD DO YOUTUBE (só baixar, sem processar) ────────────
+window.baixarYouTube = async function () {
+    const input = $('input-youtube');
+    const btn   = $('btn-yt-baixar');
+    const link  = input?.value.trim();
+    if (!link || (!link.includes('youtube.com') && !link.includes('youtu.be'))) {
+        alert('Insira um link válido do YouTube.');
+        return;
+    }
+    if (btn) { btn.disabled = true; btn.textContent = 'BAIXANDO...'; }
+    try {
+        const res = await fetch(`${API}/api/download-youtube`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${window.Auth.getToken()}`,
             },
             body: JSON.stringify({ url: link }),
             signal: AbortSignal.timeout(300_000),
         });
-
-        if (!res.ok) {
-            const err = await res.json();
-            throw new Error(err.detail || `Erro ${res.status}`);
-        }
-
+        if (!res.ok) { const e = await res.json(); throw new Error(e.detail); }
         const blob = await res.blob();
         const url  = URL.createObjectURL(blob);
         const a    = document.createElement('a');
-        a.href     = url;
-        a.download = 'Video_EditMind.mp4';
-        document.body.appendChild(a);
-        a.click();
-        URL.revokeObjectURL(url);
-        document.body.removeChild(a);
-
+        a.href = url; a.download = 'Video_EditMind.mp4';
+        document.body.appendChild(a); a.click();
+        URL.revokeObjectURL(url); document.body.removeChild(a);
         if (btn) { btn.textContent = 'CONCLUÍDO ✅'; input.value = ''; }
-        setTimeout(() => { if (btn) { btn.textContent = 'BAIXAR'; btn.disabled = false; } }, 3000);
-
-    } catch (err) {
-        alert(`Erro: ${err.message}`);
-        if (btn) { btn.textContent = 'BAIXAR'; btn.disabled = false; }
+        setTimeout(() => { if (btn) { btn.textContent = 'SÓ BAIXAR'; btn.disabled = false; } }, 3000);
+    } catch (e) {
+        alert('Erro: ' + e.message);
+        if (btn) { btn.textContent = 'SÓ BAIXAR'; btn.disabled = false; }
     }
-}
+};
 
-// ── Troca de abas ─────────────────────────────────────────────
-window.mudarAba = function (idAba) {
-    document.querySelectorAll('.nav-item').forEach((b) => b.classList.remove('active'));
-    document.querySelectorAll('.section').forEach((s) => s.classList.remove('active'));
-
-    const navAlvo = document.querySelector(`.nav-item[data-aba="${idAba}"]`);
-    if (navAlvo) navAlvo.classList.add('active');
-
-    const abaAlvo = $(`aba-${idAba}`);
-    if (abaAlvo) abaAlvo.classList.add('active');
+// ── ABAS ──────────────────────────────────────────────────────
+window.mudarAba = function (id) {
+    document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+    document.querySelector(`.nav-item[data-aba="${id}"]`)?.classList.add('active');
+    $(`aba-${id}`)?.classList.add('active');
 };

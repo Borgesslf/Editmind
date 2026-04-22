@@ -1,21 +1,25 @@
 /* ============================================================
-   EditMind — js/config.js
-   Ponto central de configuração do frontend.
-   Altere apenas este arquivo para mudar a URL do backend.
+   EditMind — js/config.js  v3.0
+   Ponto central de configuração. Altere só aqui.
    ============================================================ */
 
 const CONFIG = Object.freeze({
-    // ── URL do backend (Render) ───────────────────────────────
-    // Troque pela URL real do seu app no Render antes de commitar
+
+    // ── Backend (Render) ──────────────────────────────────────
     API_URL: 'https://editmind-ay26.onrender.com',
 
-    // ── Chaves do localStorage ────────────────────────────────
+    // ── Supabase (necessário para reset de senha no frontend) ─
+    // Copie do Dashboard Supabase > Project Settings > API
+    SUPABASE_URL:      'https://SEU-PROJETO.supabase.co',
+    SUPABASE_ANON_KEY: 'eyJ...',   // chave "anon public"
+
+    // ── localStorage keys ─────────────────────────────────────
     TOKEN_KEY: 'editmind_token',
     USER_KEY:  'editmind_user',
 
-    // ── Configurações do upload ───────────────────────────────
-    MAX_DURACAO_AVISO_SEGUNDOS: 180,  // Avisa o usuário se o vídeo for longo
-    VERSAO: '2.1.0',
+    // ── Misc ──────────────────────────────────────────────────
+    VERSAO: '3.0.0',
+    MAX_DURACAO_AVISO: 180,
 });
 
 window.CONFIG = CONFIG;
