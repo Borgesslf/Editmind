@@ -1,13 +1,34 @@
 {
   "version": 2,
-  "routes": [
-    { "src": "/",            "dest": "/home.html"  },
-    { "src": "/app",         "dest": "/index.html" },
-    { "src": "/login",       "dest": "/login.html" },
-    { "src": "/cadastro",    "dest": "/cadastro.html" },
-    { "src": "/demo",        "dest": "/demo.html" },
-    { "src": "/esqueci",     "dest": "/esqueci-senha.html" },
-    { "src": "/redefinir",   "dest": "/redefinir-senha.html" },
-    { "src": "/(.*)",        "dest": "/$1" }
+  "cleanUrls": true,
+  "rewrites": [
+    {
+      "source": "/",
+      "destination": "/home.html"
+    },
+    {
+      "source": "/app",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/login",
+      "destination": "/login.html"
+    },
+    {
+      "source": "/cadastro",
+      "destination": "/cadastro.html"
+    },
+    {
+      "source": "/demo",
+      "destination": "/demo.html"
+    },
+    {
+      "source": "/esqueci",
+      "destination": "/esqueci-senha.html"
+    },
+    {
+      "source": "/redefinir",
+      "destination": "/redefinir-senha.html"
+    }
   ]
 }
