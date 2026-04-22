@@ -1,34 +1,37 @@
 {
   "version": 2,
-  "cleanUrls": true,
-  "rewrites": [
+  "routes": [
     {
-      "source": "/",
-      "destination": "/home.html"
+      "src": "/",
+      "dest": "/home.html"
     },
     {
-      "source": "/app",
-      "destination": "/index.html"
+      "src": "/app",
+      "dest": "/index.html"
     },
     {
-      "source": "/login",
-      "destination": "/login.html"
+      "src": "/login",
+      "dest": "/login.html"
     },
     {
-      "source": "/cadastro",
-      "destination": "/cadastro.html"
+      "src": "/cadastro",
+      "dest": "/cadastro.html"
     },
     {
-      "source": "/demo",
-      "destination": "/demo.html"
+      "src": "/demo",
+      "dest": "/demo.html"
     },
     {
-      "source": "/esqueci",
-      "destination": "/esqueci-senha.html"
+      "src": "/esqueci",
+      "dest": "/esqueci-senha.html"
     },
     {
-      "source": "/redefinir",
-      "destination": "/redefinir-senha.html"
+      "src": "/redefinir",
+      "dest": "/redefinir-senha.html"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/$1"
     }
   ]
 }
