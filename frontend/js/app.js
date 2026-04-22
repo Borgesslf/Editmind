@@ -84,6 +84,18 @@ function stopTimer() {
 }
 
 // ── UI HELPERS ────────────────────────────────────────────────
+function getAuthToken() {
+    return localStorage.getItem('editmind_token') || window.Auth?.getToken?.() || null;
+}
+
+function getAuthHeaders(extra = {}) {
+    const token = getAuthToken();
+    return {
+        ...extra,
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+    };
+}
+
 function pct(v) {
     if (barraP) barraP.style.width = v + '%';
     if (porcT)  porcT.textContent  = v + '%';
@@ -154,7 +166,7 @@ async function processar(arquivos) {
         if (nomeArq) nomeArq.textContent = arq.name;
         return fetch(`${API}/api/processar`, {
             method:  'POST',
-            headers: { 'Authorization': `Bearer ${window.Auth.getToken()}` },
+            headers: getAuthHeaders(),
             body:    form,
             signal:  ctrl.signal,
         });
@@ -179,10 +191,7 @@ window.processarYouTube = async function () {
     await _executar(async (ctrl) =>
         fetch(`${API}/api/processar-youtube`, {
             method:  'POST',
-            headers: {
-                'Content-Type':  'application/json',
-                'Authorization': `Bearer ${window.Auth.getToken()}`,
-            },
+            headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
             body:   JSON.stringify({ url: link }),
             signal: ctrl.signal,
         })
@@ -359,10 +368,7 @@ window.baixarYouTube = async function () {
     try {
         const res = await fetch(`${API}/api/download-youtube`, {
             method:  'POST',
-            headers: {
-                'Content-Type':  'application/json',
-                'Authorization': `Bearer ${window.Auth.getToken()}`,
-            },
+            headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
             body:   JSON.stringify({ url: link }),
             signal: AbortSignal.timeout(300_000),
         });

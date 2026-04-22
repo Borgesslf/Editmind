@@ -41,7 +41,7 @@ const Auth = Object.freeze({
     logout() {
         localStorage.removeItem(CONFIG.TOKEN_KEY);
         localStorage.removeItem(CONFIG.USER_KEY);
-        window.location.href = 'home.html';
+        window.location.href = '/';
     },
 
     exigirLogin(dest = 'login.html') {

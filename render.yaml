@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: editmind-api
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    autoDeploy: true
+    envVars:
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_KEY
+        sync: false
+      - key: SUPABASE_SERVICE_KEY
+        sync: false
+      - key: SITE_URL
+        sync: false
+      - key: YTDLP_COOKIES_FILE
+        sync: false
+      - key: YTDLP_EXTRACTOR_ARGS
+        value: youtube:player_client=android,web

@@ -49,6 +49,8 @@ SUPABASE_URL         = os.getenv("SUPABASE_URL", "")
 SUPABASE_ANON_KEY    = os.getenv("SUPABASE_KEY", "")
 SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY", "")
 SITE_URL             = os.getenv("SITE_URL", "https://editmind.vercel.app")
+YTDLP_COOKIES_FILE   = os.getenv("YTDLP_COOKIES_FILE", "").strip()
+YTDLP_EXTRACTOR_ARGS = os.getenv("YTDLP_EXTRACTOR_ARGS", "youtube:player_client=android,web")
 
 # ── Clientes ──────────────────────────────────────────────────
 openai_client = AsyncOpenAI(api_key=OPENAI_API_KEY) if OPENAI_API_KEY else None
@@ -153,21 +155,36 @@ class YouTubeRequest(BaseModel):
 # DEPENDÊNCIA DE AUTH
 # ══════════════════════════════════════════════════════════════
 
-async def get_usuario(authorization: Optional[str] = Header(None)) -> dict:
-    """Valida token Bearer do Supabase."""
+async def get_current_user(authorization: Optional[str] = Header(None)) -> dict:
+    """Valida o Bearer token do Supabase e extrai id/email do usuário."""
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(401, "Token ausente.", headers={"WWW-Authenticate": "Bearer"})
     if not supabase:
         raise HTTPException(503, "Serviço de auth indisponível.")
 
     token = authorization.removeprefix("Bearer ").strip()
+    if not token:
+        raise HTTPException(401, "Token ausente.", headers={"WWW-Authenticate": "Bearer"})
+
     try:
         resp = await asyncio.to_thread(supabase.auth.get_user, token)
         if not resp or not resp.user:
             raise ValueError()
-        return {"id": resp.user.id, "email": resp.user.email}
-    except Exception:
+
+        user_email = getattr(resp.user, "email", None)
+        user_id = getattr(resp.user, "id", None)
+        if not user_email and not user_id:
+            raise ValueError()
+
+        return {"id": user_id, "email": user_email}
+    except Exception as e:
+        logger.warning(f"Falha ao validar token Supabase: {e}")
         raise HTTPException(401, "Sessão inválida ou expirada.")
+
+
+async def get_usuario(authorization: Optional[str] = Header(None)) -> dict:
+    """Compatibilidade retroativa."""
+    return await get_current_user(authorization)
 
 
 # ══════════════════════════════════════════════════════════════
@@ -248,7 +265,12 @@ async def _ytdlp_download(url: str, output_path: str) -> None:
         "--no-playlist",
         "--no-check-certificates",
         "--extractor-retries", "3",
+        "--retries", "3",
+        "--fragment-retries", "3",
+        "--file-access-retries", "3",
         "--socket-timeout", "30",
+        "--no-cache-dir",
+        "--extractor-args", YTDLP_EXTRACTOR_ARGS,
         # User-Agent de browser para evitar detecção de bot
         "--user-agent", YT_DLP_USER_AGENT,
         # Headers adicionais
@@ -259,6 +281,10 @@ async def _ytdlp_download(url: str, output_path: str) -> None:
         "-o", output_path,
         url,
     ]
+
+    if YTDLP_COOKIES_FILE and Path(YTDLP_COOKIES_FILE).exists():
+        logger.info("yt-dlp usando arquivo de cookies configurado via YTDLP_COOKIES_FILE")
+        args[1:1] = ["--cookies", YTDLP_COOKIES_FILE]
 
     proc = await asyncio.create_subprocess_exec(
         *args,
@@ -272,12 +298,13 @@ async def _ytdlp_download(url: str, output_path: str) -> None:
         logger.error(f"yt-dlp stderr: {stderr_txt[-500:]}")
 
         # Mensagem de erro amigável para o caso "bot"
-        if "Sign in" in stderr_txt or "confirm" in stderr_txt.lower():
-            raise HTTPException(
-                403,
+        if "Sign in" in stderr_txt or "confirm" in stderr_txt.lower() or "bot" in stderr_txt.lower():
+            hint = (
                 "O YouTube bloqueou o download automático. "
-                "Tente novamente em alguns minutos ou use o upload direto de arquivo."
+                "Tente novamente em alguns minutos, use o upload direto de arquivo"
+                " ou configure YTDLP_COOKIES_FILE no Render com um cookies.txt exportado do navegador."
             )
+            raise HTTPException(403, hint)
         raise RuntimeError(f"yt-dlp falhou: {stderr_txt[-300:]}")
 
 
@@ -359,10 +386,11 @@ async def upload_storage(caminho_local: str, nome_arquivo: str) -> Optional[str]
 
         # Tenta upsert (substitui se já existir)
         await asyncio.to_thread(
-            supabase_admin.storage.from_(STORAGE_BUCKET).upload,
-            nome_arquivo,
-            dados,
-            {"content-type": "video/mp4", "upsert": "true"},
+            lambda: supabase_admin.storage.from_(STORAGE_BUCKET).upload(
+                nome_arquivo,
+                dados,
+                {"content-type": "video/mp4", "upsert": True},
+            )
         )
 
         url_resp = await asyncio.to_thread(
@@ -379,6 +407,30 @@ async def upload_storage(caminho_local: str, nome_arquivo: str) -> Optional[str]
     except Exception as e:
         logger.error(f"Storage upload falhou: {e}")
         return None
+
+
+async def salvar_registro_corte(user_email: str, video_url: str, titulo: str) -> None:
+    """Persiste o corte vinculado ao usuário autenticado."""
+    if not user_email:
+        raise ValueError("user_email é obrigatório para salvar o corte.")
+    if not supabase_admin:
+        logger.warning("SUPABASE_SERVICE_KEY não configurada — registro do corte não foi salvo no banco.")
+        return
+
+    payload = {
+        "user_email": user_email,
+        "video_url": video_url,
+        "titulo": titulo,
+    }
+
+    try:
+        await asyncio.to_thread(
+            lambda: supabase_admin.table("cortes").insert(payload).execute()
+        )
+        logger.info(f"DB: corte vinculado ao usuário {user_email}")
+    except Exception as e:
+        logger.error(f"Erro ao salvar corte no Supabase: {e}")
+        raise
 
 
 # ══════════════════════════════════════════════════════════════
@@ -491,6 +543,9 @@ async def redefinir_senha(dados: RedefinirSenhaRequest):
     if not supabase_admin:
         raise HTTPException(503, "Admin indisponível. Configure SUPABASE_SERVICE_KEY.")
     try:
+        if not supabase:
+            raise HTTPException(503, "Auth indisponível.")
+
         user_resp = await asyncio.to_thread(supabase.auth.get_user, dados.token)
         if not user_resp or not user_resp.user:
             raise ValueError("Token inválido")
@@ -514,7 +569,7 @@ async def redefinir_senha(dados: RedefinirSenhaRequest):
 async def processar_video(
     tasks: BackgroundTasks,
     file: UploadFile = File(...),
-    usuario: dict = Depends(get_usuario),
+    usuario: dict = Depends(get_current_user),
 ):
     ext = Path(file.filename or "").suffix.lower()
     if ext not in EXTS_VALIDAS:
@@ -537,7 +592,13 @@ async def processar_video(
                 f_out.write(chunk)
 
         logger.info(f"Job {job_id} | salvo: {tamanho/1024/1024:.1f}MB")
-        return JSONResponse(await _pipeline(str(video_path), job_id, tasks, pasta_temp))
+        resultado = await _pipeline(str(video_path), job_id, tasks, pasta_temp)
+        await salvar_registro_corte(
+            user_email=usuario.get("email") or usuario.get("id"),
+            video_url=resultado.get("url_corte", ""),
+            titulo=file.filename or f"upload_{job_id}"
+        )
+        return JSONResponse(resultado)
 
     except HTTPException:
         shutil.rmtree(pasta_temp, ignore_errors=True)
@@ -556,7 +617,7 @@ async def processar_video(
 async def processar_youtube(
     tasks: BackgroundTasks,
     dados: YouTubeRequest,
-    usuario: dict = Depends(get_usuario),
+    usuario: dict = Depends(get_current_user),
 ):
     job_id     = str(uuid.uuid4())[:8]
     pasta_temp = Path(tempfile.mkdtemp(prefix=f"editmind_yt_{job_id}_"))
@@ -567,7 +628,13 @@ async def processar_youtube(
     try:
         await _ytdlp_download(dados.url, video_path)
         logger.info(f"YT Job {job_id} | download concluído")
-        return JSONResponse(await _pipeline(video_path, job_id, tasks, pasta_temp))
+        resultado = await _pipeline(video_path, job_id, tasks, pasta_temp)
+        await salvar_registro_corte(
+            user_email=usuario.get("email") or usuario.get("id"),
+            video_url=resultado.get("url_corte", ""),
+            titulo=dados.url
+        )
+        return JSONResponse(resultado)
 
     except asyncio.TimeoutError:
         shutil.rmtree(pasta_temp, ignore_errors=True)
@@ -589,7 +656,7 @@ async def processar_youtube(
 async def download_youtube(
     tasks: BackgroundTasks,
     dados: YouTubeRequest,
-    usuario: dict = Depends(get_usuario),
+    usuario: dict = Depends(get_current_user),
 ):
     """
     Baixa o vídeo do YouTube e devolve como stream para o cliente.

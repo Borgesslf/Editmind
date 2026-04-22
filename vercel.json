@@ -30,8 +30,8 @@
       "dest": "/redefinir-senha.html"
     },
     {
-      "src": "^/(.+\\.html)$",
-      "dest": "/$1"
+      "src": "^/(home|index|login|cadastro|demo|esqueci-senha|redefinir-senha)\\.html$",
+      "dest": "/$1.html"
     },
     {
       "src": "^/(js|css|assets)/(.+)$",
