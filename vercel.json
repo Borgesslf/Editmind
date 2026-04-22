@@ -2,36 +2,40 @@
   "version": 2,
   "routes": [
     {
-      "src": "/",
+      "src": "^/$",
       "dest": "/home.html"
     },
     {
-      "src": "/app",
+      "src": "^/app/?$",
       "dest": "/index.html"
     },
     {
-      "src": "/login",
+      "src": "^/login/?$",
       "dest": "/login.html"
     },
     {
-      "src": "/cadastro",
+      "src": "^/cadastro/?$",
       "dest": "/cadastro.html"
     },
     {
-      "src": "/demo",
+      "src": "^/demo/?$",
       "dest": "/demo.html"
     },
     {
-      "src": "/esqueci",
+      "src": "^/esqueci/?$",
       "dest": "/esqueci-senha.html"
     },
     {
-      "src": "/redefinir",
+      "src": "^/redefinir/?$",
       "dest": "/redefinir-senha.html"
     },
     {
-      "src": "/(.*)",
+      "src": "^/(.+\\.html)$",
       "dest": "/$1"
+    },
+    {
+      "src": "^/(js|css|assets)/(.+)$",
+      "dest": "/$1/$2"
     }
   ]
 }

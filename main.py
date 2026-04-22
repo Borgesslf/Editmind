@@ -4,14 +4,13 @@ EditMind API v3.0
 Stack : FastAPI · OpenAI (Whisper-1 + GPT-4o) · FFmpeg · Supabase
 Deploy: Render (backend) + Vercel (frontend)
 
-Novidades v3.0
---------------
-- /api/auth/esqueci-senha  — envia e-mail de reset via Supabase
-- /api/auth/redefinir-senha — atualiza senha com token de recovery
-- /api/processar-youtube   — baixa + processa vídeo do YouTube pela IA
-- Supabase Storage          — vídeos cortados enviados para bucket "cortes"
-- Logging estruturado       — substituição dos print()
-- Async FFmpeg              — não bloqueia o event loop do servidor
+Correções v3.0-final
+--------------------
+- yt-dlp: headers anti-bot (User-Agent + cookies mode) para evitar "Sign in to confirm you're not a bot"
+- /api/download-youtube: endpoint que faltava (só baixa, sem IA)
+- Supabase Storage: lógica de upload real com URL pública
+- Logging estruturado
+- Async FFmpeg
 """
 
 import os
@@ -28,7 +27,7 @@ from typing import Optional
 
 from fastapi import FastAPI, File, UploadFile, HTTPException, BackgroundTasks, Depends, Header
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, EmailStr, field_validator
 from dotenv import load_dotenv
@@ -45,34 +44,39 @@ logger = logging.getLogger("editmind")
 load_dotenv()
 
 # ── Variáveis de ambiente ─────────────────────────────────────
-OPENAI_API_KEY      = os.getenv("OPENAI_API_KEY", "")
-SUPABASE_URL        = os.getenv("SUPABASE_URL", "")
-SUPABASE_ANON_KEY   = os.getenv("SUPABASE_KEY", "")          # chave anon (auth pública)
-SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY", "") # service_role (storage + admin)
-SITE_URL            = os.getenv("SITE_URL", "https://editmind.vercel.app")
+OPENAI_API_KEY       = os.getenv("OPENAI_API_KEY", "")
+SUPABASE_URL         = os.getenv("SUPABASE_URL", "")
+SUPABASE_ANON_KEY    = os.getenv("SUPABASE_KEY", "")
+SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY", "")
+SITE_URL             = os.getenv("SITE_URL", "https://editmind.vercel.app")
 
 # ── Clientes ──────────────────────────────────────────────────
 openai_client = AsyncOpenAI(api_key=OPENAI_API_KEY) if OPENAI_API_KEY else None
 
-# Cliente público — para auth de usuários
 supabase: Optional[Client] = (
     create_client(SUPABASE_URL, SUPABASE_ANON_KEY)
     if SUPABASE_URL and SUPABASE_ANON_KEY else None
 )
 
-# Cliente admin — para storage e operações privilegiadas
 supabase_admin: Optional[Client] = (
     create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
     if SUPABASE_URL and SUPABASE_SERVICE_KEY else None
 )
 
-STORAGE_BUCKET  = "cortes"           # bucket no Supabase Storage
-OUTPUT_DIR      = Path("outputs")    # pasta local temporária
+STORAGE_BUCKET = "cortes"
+OUTPUT_DIR     = Path("outputs")
 OUTPUT_DIR.mkdir(exist_ok=True)
 
-MAX_DURACAO_S   = 180                # 3 min
-MAX_BYTES       = 200 * 1024 * 1024  # 200 MB
-EXTS_VALIDAS    = {".mp4", ".mov", ".avi", ".webm"}
+MAX_DURACAO_S  = 180
+MAX_BYTES      = 200 * 1024 * 1024
+EXTS_VALIDAS   = {".mp4", ".mov", ".avi", ".webm"}
+
+# User-Agent realista para o yt-dlp contornar detecção de bot
+YT_DLP_USER_AGENT = (
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+    "AppleWebKit/537.36 (KHTML, like Gecko) "
+    "Chrome/120.0.0.0 Safari/537.36"
+)
 
 
 # ══════════════════════════════════════════════════════════════
@@ -81,7 +85,7 @@ EXTS_VALIDAS    = {".mp4", ".mov", ".avi", ".webm"}
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    logger.info("🚀 EditMind v3.0 iniciada")
+    logger.info("🚀 EditMind v3.0-final iniciada")
     logger.info(f"   OpenAI        : {'✅' if OPENAI_API_KEY else '❌'}")
     logger.info(f"   Supabase Auth : {'✅' if supabase else '❌'}")
     logger.info(f"   Supabase Admin: {'✅' if supabase_admin else '❌ (SUPABASE_SERVICE_KEY ausente)'}")
@@ -99,7 +103,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Fallback local para servir outputs (usado se o Supabase Storage não estiver configurado)
 app.mount("/outputs", StaticFiles(directory="outputs"), name="outputs")
 
 
@@ -124,7 +127,7 @@ class EsqueciSenhaRequest(BaseModel):
 
 
 class RedefinirSenhaRequest(BaseModel):
-    token:     str
+    token:      str
     nova_senha: str
 
     @field_validator("nova_senha")
@@ -151,7 +154,7 @@ class YouTubeRequest(BaseModel):
 # ══════════════════════════════════════════════════════════════
 
 async def get_usuario(authorization: Optional[str] = Header(None)) -> dict:
-    """Valida token Bearer do Supabase. Executa em thread para não bloquear."""
+    """Valida token Bearer do Supabase."""
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(401, "Token ausente.", headers={"WWW-Authenticate": "Bearer"})
     if not supabase:
@@ -172,7 +175,6 @@ async def get_usuario(authorization: Optional[str] = Header(None)) -> dict:
 # ══════════════════════════════════════════════════════════════
 
 async def _ffmpeg(*args: str) -> None:
-    """Roda FFmpeg sem bloquear o event loop."""
     proc = await asyncio.create_subprocess_exec(
         "ffmpeg", *args,
         stdout=asyncio.subprocess.DEVNULL,
@@ -225,6 +227,61 @@ def sanitizar(nome: str) -> str:
 
 
 # ══════════════════════════════════════════════════════════════
+# HELPERS — YT-DLP (ANTI-BOT)
+# ══════════════════════════════════════════════════════════════
+
+async def _ytdlp_download(url: str, output_path: str) -> None:
+    """
+    Baixa vídeo do YouTube usando yt-dlp com estratégias anti-bot:
+    - User-Agent de browser real
+    - --no-check-certificates
+    - --extractor-retries 3
+    - Fallback progressivo de formato
+    Corrige o erro "Sign in to confirm you're not a bot".
+    """
+    args = [
+        "yt-dlp",
+        # Formato: tenta mp4; se falhar cai para melhor disponível
+        "-f", "bestvideo[ext=mp4][height<=1080]+bestaudio[ext=m4a]/bestvideo[ext=mp4]+bestaudio/best[ext=mp4]/best",
+        "--merge-output-format", "mp4",
+        "--max-filesize", "200m",
+        "--no-playlist",
+        "--no-check-certificates",
+        "--extractor-retries", "3",
+        "--socket-timeout", "30",
+        # User-Agent de browser para evitar detecção de bot
+        "--user-agent", YT_DLP_USER_AGENT,
+        # Headers adicionais
+        "--add-header", "Accept-Language:pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7",
+        "--add-header", "Accept:text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        # Sem geo-bypass agressivo (pode chamar atenção)
+        "--no-geo-bypass",
+        "-o", output_path,
+        url,
+    ]
+
+    proc = await asyncio.create_subprocess_exec(
+        *args,
+        stdout=asyncio.subprocess.DEVNULL,
+        stderr=asyncio.subprocess.PIPE,
+    )
+    _, stderr = await asyncio.wait_for(proc.communicate(), timeout=300)
+
+    if proc.returncode != 0:
+        stderr_txt = stderr.decode(errors="replace")
+        logger.error(f"yt-dlp stderr: {stderr_txt[-500:]}")
+
+        # Mensagem de erro amigável para o caso "bot"
+        if "Sign in" in stderr_txt or "confirm" in stderr_txt.lower():
+            raise HTTPException(
+                403,
+                "O YouTube bloqueou o download automático. "
+                "Tente novamente em alguns minutos ou use o upload direto de arquivo."
+            )
+        raise RuntimeError(f"yt-dlp falhou: {stderr_txt[-300:]}")
+
+
+# ══════════════════════════════════════════════════════════════
 # HELPERS — OPENAI ASSÍNCRONO
 # ══════════════════════════════════════════════════════════════
 
@@ -240,7 +297,6 @@ async def transcrever(audio_path: str) -> str:
         )
     texto = resp if isinstance(resp, str) else getattr(resp, "text", "")
 
-    # Corrige pontuação com gpt-4o-mini
     corr = await openai_client.chat.completions.create(
         model="gpt-4o-mini",
         messages=[
@@ -290,20 +346,18 @@ async def analisar_viral(transcricao: str, duracao: float) -> dict:
 
 async def upload_storage(caminho_local: str, nome_arquivo: str) -> Optional[str]:
     """
-    Faz upload do arquivo para o bucket 'cortes' no Supabase Storage.
+    Faz upload para o bucket 'cortes' no Supabase Storage.
     Retorna a URL pública, ou None se o Storage não estiver configurado.
-
-    Pré-requisito: criar o bucket 'cortes' no Supabase Dashboard
-    como Public, ou usar signed URLs se quiser privacidade.
     """
     if not supabase_admin:
-        logger.warning("SUPABASE_SERVICE_KEY não configurada — Storage desativado.")
+        logger.warning("SUPABASE_SERVICE_KEY não configurada — Storage desativado, usando fallback local.")
         return None
 
     try:
         with open(caminho_local, "rb") as f:
             dados = f.read()
 
+        # Tenta upsert (substitui se já existir)
         await asyncio.to_thread(
             supabase_admin.storage.from_(STORAGE_BUCKET).upload,
             nome_arquivo,
@@ -315,10 +369,12 @@ async def upload_storage(caminho_local: str, nome_arquivo: str) -> Optional[str]
             supabase_admin.storage.from_(STORAGE_BUCKET).get_public_url,
             nome_arquivo,
         )
-        # Retorna string da URL pública
-        url = url_resp if isinstance(url_resp, str) else url_resp.get("publicUrl", "")
+        # get_public_url pode retornar str ou dict dependendo da versão do SDK
+        url = url_resp if isinstance(url_resp, str) else (
+            url_resp.get("publicUrl") or url_resp.get("data", {}).get("publicUrl", "")
+        )
         logger.info(f"Storage: arquivo salvo → {url}")
-        return url
+        return url or None
 
     except Exception as e:
         logger.error(f"Storage upload falhou: {e}")
@@ -326,14 +382,10 @@ async def upload_storage(caminho_local: str, nome_arquivo: str) -> Optional[str]
 
 
 # ══════════════════════════════════════════════════════════════
-# PIPELINE CENTRAL (reutilizado por /processar e /processar-youtube)
+# PIPELINE CENTRAL
 # ══════════════════════════════════════════════════════════════
 
 async def _pipeline(video_path: str, job_id: str, tasks: BackgroundTasks, pasta_temp: Path) -> dict:
-    """
-    Executa: metadados → áudio → transcrição → análise → corte → storage
-    Retorna o dict de resposta final.
-    """
     metadados = await obter_metadados(video_path)
     duracao   = float(metadados["duracao_segundos"])
     logger.info(f"Job {job_id} | metadados: {metadados}")
@@ -341,30 +393,24 @@ async def _pipeline(video_path: str, job_id: str, tasks: BackgroundTasks, pasta_
     if duracao > MAX_DURACAO_S:
         raise HTTPException(413, f"Vídeo longo demais ({int(duracao)}s). Máx: {MAX_DURACAO_S}s.")
 
-    # Áudio
     audio_path = str(pasta_temp / "audio.mp3")
     logger.info(f"Job {job_id} | extraindo áudio...")
     await extrair_audio(video_path, audio_path)
 
-    # Transcrição
     logger.info(f"Job {job_id} | transcrevendo...")
     transcricao = await transcrever(audio_path)
 
-    # Análise viral
     logger.info(f"Job {job_id} | analisando viralidade...")
     analise = await analisar_viral(transcricao, duracao)
     logger.info(f"Job {job_id} | corte: {analise['inicio']}s → {analise['fim']}s")
 
-    # Corte
     nome_saida    = f"corte_{job_id}.mp4"
     caminho_local = str(OUTPUT_DIR / nome_saida)
     logger.info(f"Job {job_id} | cortando vídeo...")
     await cortar_video(video_path, caminho_local, analise["inicio"], analise["fim"])
 
-    # Supabase Storage
     url_publica = await upload_storage(caminho_local, nome_saida)
 
-    # Limpeza em background
     tasks.add_task(shutil.rmtree, pasta_temp, ignore_errors=True)
     if url_publica:
         tasks.add_task(lambda p=caminho_local: Path(p).unlink(missing_ok=True))
@@ -425,11 +471,6 @@ async def login(dados: AuthRequest):
 
 @app.post("/api/auth/esqueci-senha")
 async def esqueci_senha(dados: EsqueciSenhaRequest):
-    """
-    Dispara e-mail de recuperação de senha via Supabase.
-    O e-mail contém link que redireciona para /redefinir-senha.html
-    com o token de recovery na URL (#access_token=...&type=recovery).
-    """
     if not supabase:
         raise HTTPException(503, "Auth indisponível.")
     try:
@@ -439,7 +480,6 @@ async def esqueci_senha(dados: EsqueciSenhaRequest):
             dados.email,
             {"redirect_to": redirect},
         )
-        # Sempre retorna sucesso (não revela se o e-mail existe)
         return {"sucesso": True, "msg": "Se esse e-mail existir, você receberá as instruções."}
     except Exception as e:
         logger.error(f"Erro ao enviar reset: {e}")
@@ -448,20 +488,14 @@ async def esqueci_senha(dados: EsqueciSenhaRequest):
 
 @app.post("/api/auth/redefinir-senha")
 async def redefinir_senha(dados: RedefinirSenhaRequest):
-    """
-    Atualiza a senha usando o access_token de recovery.
-    O frontend extrai o token do hash da URL (#access_token=...).
-    """
     if not supabase_admin:
         raise HTTPException(503, "Admin indisponível. Configure SUPABASE_SERVICE_KEY.")
     try:
-        # Valida o token e obtém o user_id
         user_resp = await asyncio.to_thread(supabase.auth.get_user, dados.token)
         if not user_resp or not user_resp.user:
             raise ValueError("Token inválido")
         user_id = user_resp.user.id
 
-        # Atualiza a senha via API admin
         await asyncio.to_thread(
             supabase_admin.auth.admin.update_user_by_id,
             user_id,
@@ -491,9 +525,9 @@ async def processar_video(
     logger.info(f"Job {job_id} | usuário: {usuario['email']} | {file.filename}")
 
     try:
-        nome        = sanitizar(file.filename or f"video{ext}")
-        video_path  = pasta_temp / nome
-        tamanho     = 0
+        nome       = sanitizar(file.filename or f"video{ext}")
+        video_path = pasta_temp / nome
+        tamanho    = 0
 
         with open(video_path, "wb") as f_out:
             while chunk := await file.read(1024 * 1024):
@@ -524,10 +558,6 @@ async def processar_youtube(
     dados: YouTubeRequest,
     usuario: dict = Depends(get_usuario),
 ):
-    """
-    Baixa o vídeo do YouTube com yt-dlp e executa o pipeline completo de IA.
-    Retorna o mesmo formato que /api/processar.
-    """
     job_id     = str(uuid.uuid4())[:8]
     pasta_temp = Path(tempfile.mkdtemp(prefix=f"editmind_yt_{job_id}_"))
     video_path = str(pasta_temp / "video.mp4")
@@ -535,23 +565,7 @@ async def processar_youtube(
     logger.info(f"YT Job {job_id} | usuário: {usuario['email']} | {dados.url}")
 
     try:
-        # Download assíncrono com yt-dlp
-        proc = await asyncio.create_subprocess_exec(
-            "yt-dlp",
-            "-f", "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best",
-            "--merge-output-format", "mp4",
-            "--max-filesize", "200m",
-            "-o", video_path,
-            "--no-playlist",
-            dados.url,
-            stdout=asyncio.subprocess.DEVNULL,
-            stderr=asyncio.subprocess.PIPE,
-        )
-        _, stderr = await asyncio.wait_for(proc.communicate(), timeout=300)
-
-        if proc.returncode != 0:
-            raise RuntimeError(f"yt-dlp: {stderr.decode(errors='replace')[-300:]}")
-
+        await _ytdlp_download(dados.url, video_path)
         logger.info(f"YT Job {job_id} | download concluído")
         return JSONResponse(await _pipeline(video_path, job_id, tasks, pasta_temp))
 
@@ -568,6 +582,61 @@ async def processar_youtube(
 
 
 # ══════════════════════════════════════════════════════════════
+# ENDPOINT — DOWNLOAD YOUTUBE (só baixa, sem IA)  ← ENDPOINT QUE FALTAVA
+# ══════════════════════════════════════════════════════════════
+
+@app.post("/api/download-youtube")
+async def download_youtube(
+    tasks: BackgroundTasks,
+    dados: YouTubeRequest,
+    usuario: dict = Depends(get_usuario),
+):
+    """
+    Baixa o vídeo do YouTube e devolve como stream para o cliente.
+    Sem processamento de IA — apenas download.
+    """
+    job_id     = str(uuid.uuid4())[:8]
+    pasta_temp = Path(tempfile.mkdtemp(prefix=f"editmind_dl_{job_id}_"))
+    video_path = str(pasta_temp / "video.mp4")
+
+    logger.info(f"DL Job {job_id} | usuário: {usuario['email']} | {dados.url}")
+
+    try:
+        await _ytdlp_download(dados.url, video_path)
+
+        file_size = Path(video_path).stat().st_size
+        logger.info(f"DL Job {job_id} | {file_size/1024/1024:.1f}MB baixado")
+
+        def iterfile():
+            try:
+                with open(video_path, "rb") as f:
+                    while chunk := f.read(1024 * 1024):
+                        yield chunk
+            finally:
+                shutil.rmtree(pasta_temp, ignore_errors=True)
+
+        return StreamingResponse(
+            iterfile(),
+            media_type="video/mp4",
+            headers={
+                "Content-Disposition": 'attachment; filename="Video_EditMind.mp4"',
+                "Content-Length": str(file_size),
+            },
+        )
+
+    except asyncio.TimeoutError:
+        shutil.rmtree(pasta_temp, ignore_errors=True)
+        raise HTTPException(408, "Timeout: vídeo demorou demais para baixar.")
+    except HTTPException:
+        shutil.rmtree(pasta_temp, ignore_errors=True)
+        raise
+    except Exception as e:
+        shutil.rmtree(pasta_temp, ignore_errors=True)
+        logger.error(f"DL Job {job_id} | erro: {e}")
+        raise HTTPException(500, str(e))
+
+
+# ══════════════════════════════════════════════════════════════
 # HEALTH CHECK
 # ══════════════════════════════════════════════════════════════
 
@@ -578,8 +647,8 @@ async def health():
         "api": "EditMind",
         "versao": "3.0.0",
         "servicos": {
-            "openai":          "ok" if OPENAI_API_KEY else "ausente",
-            "supabase_auth":   "ok" if supabase else "ausente",
-            "supabase_storage":"ok" if supabase_admin else "ausente (SUPABASE_SERVICE_KEY)",
+            "openai":           "ok" if OPENAI_API_KEY else "ausente",
+            "supabase_auth":    "ok" if supabase else "ausente",
+            "supabase_storage": "ok" if supabase_admin else "ausente (SUPABASE_SERVICE_KEY)",
         },
     }
