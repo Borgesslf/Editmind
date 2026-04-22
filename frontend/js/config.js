@@ -1,20 +1,21 @@
 /* ============================================================
    EditMind — js/config.js
-   Configurações globais do projeto
+   Ponto central de configuração do frontend.
+   Altere apenas este arquivo para mudar a URL do backend.
    ============================================================ */
 
-const CONFIG = {
-    // URL do backend no Render
-    // Troque pela URL real do seu app no Render
+const CONFIG = Object.freeze({
+    // ── URL do backend (Render) ───────────────────────────────
+    // Troque pela URL real do seu app no Render antes de commitar
     API_URL: 'https://editmind-ay26.onrender.com',
 
-    // Versão do app
-    VERSION: '2.0.0',
-
-    // Chave do localStorage para o token
+    // ── Chaves do localStorage ────────────────────────────────
     TOKEN_KEY: 'editmind_token',
-    USER_KEY: 'editmind_user',
-};
+    USER_KEY:  'editmind_user',
 
-// Exporta globalmente
+    // ── Configurações do upload ───────────────────────────────
+    MAX_DURACAO_AVISO_SEGUNDOS: 180,  // Avisa o usuário se o vídeo for longo
+    VERSAO: '2.1.0',
+});
+
 window.CONFIG = CONFIG;

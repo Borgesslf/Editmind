@@ -1,0 +1,42 @@
+# ── Controle de versão ───────────────────────────────────────
+.git
+.gitignore
+
+# ── Python ───────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+*.egg-info/
+
+# ── Ambiente virtual ──────────────────────────────────────────
+venv/
+.venv/
+env/
+
+# ── Variáveis de ambiente (NUNCA enviar para a imagem) ────────
+.env
+*.env
+.env.*
+
+# ── Outputs temporários ───────────────────────────────────────
+outputs/
+*.mp4
+*.wav
+*.mp3
+
+# ── IDEs ──────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+
+# ── macOS ─────────────────────────────────────────────────────
+.DS_Store
+
+# ── Documentação ──────────────────────────────────────────────
+README.md
+*.md
+docs/
+
+# ── Frontend (não vai para o container do backend) ────────────
+frontend/
