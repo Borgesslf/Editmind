@@ -26,6 +26,7 @@ from pathlib import Path
 from contextlib import asynccontextmanager
 from typing import Optional
 from urllib.parse import urlparse, unquote
+import httpx
 
 from fastapi import FastAPI, File, UploadFile, HTTPException, BackgroundTasks, Depends, Header
 from fastapi.middleware.cors import CORSMiddleware
@@ -501,6 +502,25 @@ def _extrair_objeto_storage(video_url: str) -> Optional[str]:
     return None
 
 
+
+
+def _normalizar_video_url(video_url: str) -> str:
+    if not video_url:
+        return ""
+
+    valor = video_url.strip()
+    if valor.startswith("/outputs/"):
+        return valor
+
+    objeto = _extrair_objeto_storage(valor)
+    if objeto:
+        return f"storage:{objeto}"
+
+    parsed = urlparse(valor)
+    if parsed.path.startswith("/outputs/"):
+        return parsed.path
+
+    return valor
 async def _remover_arquivo_corte(video_url: str) -> None:
     if not video_url:
         logger.info("DELETE corte | sem video_url para remover.")
@@ -829,6 +849,67 @@ async def meus_cortes(usuario: dict = Depends(get_current_user)):
     except Exception as e:
         logger.error(f"Erro ao buscar cortes do usuário: {e}")
         raise HTTPException(500, "Erro ao buscar histórico de cortes.")
+
+
+
+@app.get("/api/cortes/download")
+async def download_corte(video_url: str, usuario: dict = Depends(get_current_user)):
+    if not supabase_admin:
+        raise HTTPException(503, "Banco indisponível.")
+
+    user_email = usuario.get("email")
+    if not user_email:
+        raise HTTPException(401, "Usuário inválido: email ausente no token.")
+
+    logger.info(f"GET /api/cortes/download chamado | usuário={user_email} | video_url={video_url}")
+
+    try:
+        registros = await asyncio.to_thread(
+            lambda: supabase_admin.table("cortes")
+            .select("video_url")
+            .eq("user_email", user_email)
+            .execute()
+        )
+        cortes = registros.data or []
+        alvo = _normalizar_video_url(video_url)
+        urls_usuario = {_normalizar_video_url(c.get("video_url", "")) for c in cortes}
+        if alvo not in urls_usuario:
+            raise HTTPException(404, "Vídeo não encontrado para o usuário autenticado.")
+
+        if alvo.startswith("/outputs/"):
+            caminho = Path(alvo.removeprefix("/")).resolve()
+            base_outputs = OUTPUT_DIR.resolve()
+            if base_outputs not in caminho.parents or not caminho.exists():
+                raise HTTPException(404, "Arquivo local não encontrado.")
+
+            async def iter_local():
+                with open(caminho, "rb") as arquivo:
+                    while chunk := arquivo.read(1024 * 1024):
+                        yield chunk
+
+            return StreamingResponse(
+                iter_local(),
+                media_type="video/mp4",
+                headers={"Content-Disposition": 'attachment; filename="Corte_EditMind.mp4"'},
+            )
+
+        download_url = video_url.strip()
+        async with httpx.AsyncClient(timeout=60.0, follow_redirects=True) as client:
+            resp = await client.get(download_url)
+            if resp.status_code >= 400:
+                raise HTTPException(502, "Falha ao obter arquivo remoto para download.")
+
+            content_type = resp.headers.get("content-type", "video/mp4")
+            return StreamingResponse(
+                iter([resp.content]),
+                media_type=content_type,
+                headers={"Content-Disposition": 'attachment; filename="Corte_EditMind.mp4"'},
+            )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Erro em /api/cortes/download: {e}")
+        raise HTTPException(500, "Erro ao baixar recorte.")
 
 
 @app.delete("/api/cortes/{corte_id}")

@@ -333,15 +333,13 @@ function exibirResultado(data) {
                 >
                     ▶ Assistir
                 </button>
-                <a
-                    href="${urlCorte}"
-                    download="Corte_EditMind.mp4"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    class="btn-download"
+                <button
+                    type="button"
+                    class="btn-download btn-download-video"
+                    data-url="${urlCorte}"
                 >
                     ⬇ Baixar MP4
-                </a>
+                </button>
             </div>
         `;
     }
@@ -406,6 +404,59 @@ window.baixarYouTube = async function () {
         if (btn) { btn.textContent = 'SÓ BAIXAR'; btn.disabled = false; }
     }
 };
+
+
+async function baixarArquivoVideo(urlVideo, botaoRef = null) {
+    if (!urlVideo || urlVideo === '#') {
+        alert('Não foi possível identificar a URL do vídeo para download.');
+        return;
+    }
+
+    const btn = botaoRef || null;
+    const textoOriginal = btn ? btn.textContent : '';
+    if (btn) {
+        btn.disabled = true;
+        btn.textContent = 'Baixando...';
+    }
+
+    try {
+        console.log(`[EditMind] Iniciando download de arquivo: ${urlVideo}`);
+        const endpoint = `${API}/api/cortes/download?video_url=${encodeURIComponent(urlVideo)}`;
+        const res = await fetch(endpoint, {
+            method: 'GET',
+            headers: getAuthHeaders(),
+        });
+
+        if (res.status === 401) {
+            window.Auth.logout();
+            return;
+        }
+
+        if (!res.ok) {
+            throw new Error(`Falha no download (${res.status}).`);
+        }
+
+        const blob = await res.blob();
+        const blobUrl = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = blobUrl;
+        a.download = 'Corte_EditMind.mp4';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(blobUrl);
+        console.log('[EditMind] Download concluído com sucesso.');
+    } catch (err) {
+        console.error('[EditMind] Erro ao baixar vídeo:', err);
+        alert('Não foi possível baixar o vídeo agora. Tente novamente em instantes.');
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.textContent = textoOriginal || '⬇ Baixar MP4';
+        }
+    }
+}
+window.baixarArquivoVideo = baixarArquivoVideo;
 
 // ── ABAS ──────────────────────────────────────────────────────
 window.mudarAba = function (id) {
@@ -473,7 +524,7 @@ function renderConteudos(cortes) {
                 <p class="tool-description" style="margin:0;">Criado em: ${dataFmt}</p>
                 <div class="result-btns" style="justify-content:flex-start;">
                     <a href="${urlVideo}" target="_blank" rel="noopener noreferrer" class="btn-assistir">▶ Abrir vídeo</a>
-                    <a href="${urlVideo}" download="Corte_EditMind.mp4" class="btn-download">⬇ Baixar</a>
+                    <button type="button" class="btn-download btn-download-video" data-url="${urlVideo}">⬇ Baixar</button>
                     <button type="button" class="btn-excluir-corte" data-corte-id="${corteId}">🗑 Excluir</button>
                 </div>
             </article>
@@ -573,6 +624,13 @@ async function excluirCorte(corteId, btn) {
 }
 
 document.addEventListener('click', (event) => {
+    const btnDownload = event.target.closest('.btn-download-video');
+    if (btnDownload) {
+        const videoUrl = btnDownload.getAttribute('data-url');
+        baixarArquivoVideo(videoUrl, btnDownload);
+        return;
+    }
+
     const btn = event.target.closest('.btn-excluir-corte');
     if (!btn) return;
     const corteId = btn.getAttribute('data-corte-id');
