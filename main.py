@@ -25,6 +25,7 @@ import logging
 from pathlib import Path
 from contextlib import asynccontextmanager
 from typing import Optional
+from urllib.parse import urlparse, unquote
 
 from fastapi import FastAPI, File, UploadFile, HTTPException, BackgroundTasks, Depends, Header
 from fastapi.middleware.cors import CORSMiddleware
@@ -256,52 +257,83 @@ def sanitizar(nome: str) -> str:
 # ══════════════════════════════════════════════════════════════
 
 async def _ytdlp_download(url: str, output_path: str) -> None:
-    args = [
-        "yt-dlp",
-        "-f", "bestvideo[ext=mp4][height<=1080]+bestaudio[ext=m4a]/bestvideo[ext=mp4]+bestaudio/best[ext=mp4]/best",
+    common_args = [
         "--merge-output-format", "mp4",
         "--max-filesize", "200m",
         "--no-playlist",
         "--no-check-certificates",
-        "--extractor-retries", "3",
-        "--retries", "3",
-        "--fragment-retries", "3",
-        "--file-access-retries", "3",
+        "--extractor-retries", "5",
+        "--retries", "8",
+        "--fragment-retries", "8",
+        "--file-access-retries", "8",
         "--socket-timeout", "30",
+        "--retry-sleep", "2",
+        "--sleep-requests", "1",
+        "--sleep-interval", "1",
+        "--max-sleep-interval", "4",
         "--no-cache-dir",
         "--extractor-args", YTDLP_EXTRACTOR_ARGS,
         "--user-agent", YT_DLP_USER_AGENT,
         "--add-header", "Accept-Language:pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7",
         "--add-header", "Accept:text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-        "--no-geo-bypass",
+    ]
+    formatos = [
+        "bestvideo[ext=mp4][height<=1080]+bestaudio[ext=m4a]/bestvideo[ext=mp4]+bestaudio/best[ext=mp4]/best",
+        "bv*[height<=720]+ba/b[height<=720]/best",
+        "best",
     ]
 
-    if YTDLP_COOKIES_FILE and Path(YTDLP_COOKIES_FILE).exists():
-        logger.info("yt-dlp usando arquivo de cookies configurado via YTDLP_COOKIES_FILE")
-        args.extend(["--cookies", YTDLP_COOKIES_FILE])
+    usar_cookies = bool(YTDLP_COOKIES_FILE and Path(YTDLP_COOKIES_FILE).exists())
+    if YTDLP_COOKIES_FILE and not usar_cookies:
+        logger.warning(f"YTDLP_COOKIES_FILE definido, mas arquivo não existe: {YTDLP_COOKIES_FILE}")
 
-    args.extend(["-o", output_path, url])
+    tentativas = []
+    for i, fmt in enumerate(formatos, start=1):
+        tentativas.append({"nome": f"sem-cookies-f{i}", "formato": fmt, "cookies": False})
+        if usar_cookies:
+            tentativas.append({"nome": f"com-cookies-f{i}", "formato": fmt, "cookies": True})
 
-    proc = await asyncio.create_subprocess_exec(
-        *args,
-        stdout=asyncio.subprocess.DEVNULL,
-        stderr=asyncio.subprocess.PIPE,
-    )
-    _, stderr = await asyncio.wait_for(proc.communicate(), timeout=300)
+    ultimo_erro = ""
+    for idx, tentativa in enumerate(tentativas, start=1):
+        args = ["yt-dlp", *common_args, "-f", tentativa["formato"]]
+        if tentativa["cookies"]:
+            args.extend(["--cookies", YTDLP_COOKIES_FILE])
+        args.extend(["-o", output_path, url])
 
-    if proc.returncode != 0:
+        logger.info(
+            f"yt-dlp tentativa {idx}/{len(tentativas)} | estratégia={tentativa['nome']} | url={url}"
+        )
+        proc = await asyncio.create_subprocess_exec(
+            *args,
+            stdout=asyncio.subprocess.DEVNULL,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        try:
+            _, stderr = await asyncio.wait_for(proc.communicate(), timeout=300)
+        except asyncio.TimeoutError:
+            proc.kill()
+            await proc.communicate()
+            ultimo_erro = "Timeout no yt-dlp."
+            logger.warning(f"yt-dlp tentativa {idx} expirou (timeout).")
+            continue
+
+        if proc.returncode == 0:
+            logger.info(f"yt-dlp download concluído na tentativa {idx} ({tentativa['nome']}).")
+            return
+
         stderr_txt = stderr.decode(errors="replace")
-        logger.error(f"yt-dlp stderr: {stderr_txt[-500:]}")
+        ultimo_erro = stderr_txt[-500:]
+        logger.warning(f"yt-dlp tentativa {idx} falhou: {ultimo_erro}")
 
-        if "Sign in" in stderr_txt or "confirm" in stderr_txt.lower() or "bot" in stderr_txt.lower():
-            hint = (
-                "O YouTube bloqueou o download automático. "
-                "Tente novamente em alguns minutos, use o upload direto de arquivo"
-                " ou configure YTDLP_COOKIES_FILE no Render com um cookies.txt exportado do navegador."
-            )
-            raise HTTPException(403, hint)
-
-        raise RuntimeError(f"yt-dlp falhou: {stderr_txt[-300:]}")
+    erro_l = ultimo_erro.lower()
+    if "sign in" in erro_l or "confirm" in erro_l or "bot" in erro_l:
+        hint = (
+            "O YouTube bloqueou o download automático nesta tentativa. "
+            "Tente novamente em alguns minutos. Se o erro persistir, configure YTDLP_COOKIES_FILE "
+            "com um cookies.txt exportado do navegador ou use upload manual no EditMind."
+        )
+        raise HTTPException(403, hint)
+    raise RuntimeError("Falha ao baixar vídeo do YouTube após múltiplas tentativas.")
 
 
 # ══════════════════════════════════════════════════════════════
@@ -447,6 +479,54 @@ async def salvar_registro_corte(user_email: str, video_url: str, titulo: str) ->
     except Exception as e:
         logger.error(f"Erro ao salvar corte no Supabase: {e}")
         raise
+
+
+def _extrair_objeto_storage(video_url: str) -> Optional[str]:
+    if not video_url:
+        return None
+
+    padroes = (
+        "/storage/v1/object/public/cortes/",
+        "/storage/v1/object/cortes/",
+    )
+    for padrao in padroes:
+        if padrao in video_url:
+            return unquote(video_url.split(padrao, 1)[1]).lstrip("/")
+
+    parsed = urlparse(video_url)
+    if parsed.path.startswith("/storage/v1/object/public/cortes/"):
+        return unquote(parsed.path.replace("/storage/v1/object/public/cortes/", "", 1)).lstrip("/")
+    if parsed.path.startswith("/storage/v1/object/cortes/"):
+        return unquote(parsed.path.replace("/storage/v1/object/cortes/", "", 1)).lstrip("/")
+    return None
+
+
+async def _remover_arquivo_corte(video_url: str) -> None:
+    if not video_url:
+        logger.info("DELETE corte | sem video_url para remover.")
+        return
+
+    objeto_storage = _extrair_objeto_storage(video_url)
+    if objeto_storage:
+        if not supabase_admin:
+            raise RuntimeError("SUPABASE_SERVICE_KEY ausente para remover arquivo do Storage.")
+        logger.info(f"DELETE corte | removendo arquivo do Storage: {objeto_storage}")
+        await asyncio.to_thread(
+            lambda: supabase_admin.storage.from_(STORAGE_BUCKET).remove([objeto_storage])
+        )
+        return
+
+    if video_url.startswith("/outputs/"):
+        arquivo_local = Path(video_url.removeprefix("/")).resolve()
+        base_outputs = OUTPUT_DIR.resolve()
+        if base_outputs in arquivo_local.parents and arquivo_local.exists():
+            logger.info(f"DELETE corte | removendo arquivo local: {arquivo_local}")
+            arquivo_local.unlink(missing_ok=True)
+        else:
+            logger.info(f"DELETE corte | arquivo local não encontrado ou fora de outputs: {arquivo_local}")
+        return
+
+    logger.info(f"DELETE corte | URL sem remoção aplicável: {video_url}")
 
 
 # ══════════════════════════════════════════════════════════════
@@ -749,6 +829,47 @@ async def meus_cortes(usuario: dict = Depends(get_current_user)):
     except Exception as e:
         logger.error(f"Erro ao buscar cortes do usuário: {e}")
         raise HTTPException(500, "Erro ao buscar histórico de cortes.")
+
+
+@app.delete("/api/cortes/{corte_id}")
+async def excluir_corte(corte_id: str, usuario: dict = Depends(get_current_user)):
+    if not supabase_admin:
+        raise HTTPException(503, "Banco indisponível.")
+
+    user_email = usuario.get("email")
+    logger.info(f"DELETE /api/cortes/{corte_id} chamado | usuário={user_email}")
+    if not user_email:
+        raise HTTPException(401, "Usuário inválido: email ausente no token.")
+
+    try:
+        busca = await asyncio.to_thread(
+            lambda: supabase_admin.table("cortes")
+            .select("id, user_email, video_url")
+            .eq("id", corte_id)
+            .eq("user_email", user_email)
+            .limit(1)
+            .execute()
+        )
+        corte = (busca.data or [None])[0]
+        if not corte:
+            raise HTTPException(404, "Recorte não encontrado.")
+
+        await _remover_arquivo_corte(corte.get("video_url", ""))
+
+        await asyncio.to_thread(
+            lambda: supabase_admin.table("cortes")
+            .delete()
+            .eq("id", corte_id)
+            .eq("user_email", user_email)
+            .execute()
+        )
+        logger.info(f"DELETE /api/cortes/{corte_id} concluído com sucesso.")
+        return {"sucesso": True, "mensagem": "Recorte excluído com sucesso."}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Erro ao excluir corte {corte_id}: {e}")
+        raise HTTPException(500, "Erro ao excluir recorte.")
 
 
 # ══════════════════════════════════════════════════════════════

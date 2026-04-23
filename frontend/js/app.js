@@ -31,8 +31,10 @@ const corteFim = $('corte-fim');
 const corteMot = $('corte-motivo');
 const conteudosLista = $('conteudos-lista');
 const conteudosEmptyTemplate = $('conteudos-empty-template');
+const conteudosFeedback = $('conteudos-feedback');
 
 window.ultimoResultado = null;
+window.meusCortes = [];
 
 // ── INIT ──────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
@@ -368,6 +370,7 @@ window.baixarYouTube = async function () {
     if (btn) { btn.disabled = true; btn.textContent = 'BAIXANDO...'; }
 
     try {
+        console.log('[EditMind][YouTube] Iniciando fluxo de download direto.');
         const res = await fetch(`${API}/api/download-youtube`, {
             method: 'POST',
             headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
@@ -377,6 +380,7 @@ window.baixarYouTube = async function () {
 
         if (!res.ok) {
             const e = await res.json();
+            console.log('[EditMind][YouTube] Falha no download direto.', e);
             throw new Error(e.detail || `Erro ${res.status}`);
         }
 
@@ -397,6 +401,7 @@ window.baixarYouTube = async function () {
         }, 3000);
 
     } catch (e) {
+        console.error('[EditMind][YouTube] Erro no fluxo de download:', e);
         alert('Erro: ' + (e.message || 'Falha no download.'));
         if (btn) { btn.textContent = 'SÓ BAIXAR'; btn.disabled = false; }
     }
@@ -441,26 +446,35 @@ function renderEmptyStateConteudos() {
     conteudosLista.innerHTML = conteudosEmptyTemplate.innerHTML;
 }
 
+function setConteudosFeedback(texto, tipo = 'erro') {
+    if (!conteudosFeedback) return;
+    conteudosFeedback.textContent = texto || '';
+    conteudosFeedback.style.color = tipo === 'erro' ? '#ef4444' : '#22c55e';
+}
+
 function renderConteudos(cortes) {
     if (!conteudosLista) return;
+    window.meusCortes = Array.isArray(cortes) ? cortes : [];
 
-    if (!Array.isArray(cortes) || cortes.length === 0) {
+    if (window.meusCortes.length === 0) {
         renderEmptyStateConteudos();
         return;
     }
 
-    const cardsHtml = cortes.map((corte) => {
+    const cardsHtml = window.meusCortes.map((corte) => {
         const titulo = escaparHtml(corte.titulo || 'Sem título');
         const dataFmt = formatarDataPtBR(corte.criado_em);
         const urlVideo = montarUrlVideo(corte.video_url);
+        const corteId = escaparHtml(corte.id || '');
         return `
-            <article class="tool-bentoCard" style="display:flex;flex-direction:column;gap:12px;">
+            <article class="tool-bentoCard conteudo-card" data-corte-id="${corteId}" style="display:flex;flex-direction:column;gap:12px;">
                 <video src="${urlVideo}" controls preload="metadata" style="width:100%;border-radius:12px;background:#000;"></video>
                 <h3 class="tool-title" style="margin:0;">${titulo}</h3>
                 <p class="tool-description" style="margin:0;">Criado em: ${dataFmt}</p>
                 <div class="result-btns" style="justify-content:flex-start;">
                     <a href="${urlVideo}" target="_blank" rel="noopener noreferrer" class="btn-assistir">▶ Abrir vídeo</a>
                     <a href="${urlVideo}" download="Corte_EditMind.mp4" class="btn-download">⬇ Baixar</a>
+                    <button type="button" class="btn-excluir-corte" data-corte-id="${corteId}">🗑 Excluir</button>
                 </div>
             </article>
         `;
@@ -477,6 +491,7 @@ async function carregarMeusConteudos() {
     }
 
     try {
+        setConteudosFeedback('');
         console.log('[EditMind] Chamando endpoint GET /api/meus-cortes...');
         const res = await fetch(`${API}/api/meus-cortes`, {
             method: 'GET',
@@ -501,6 +516,65 @@ async function carregarMeusConteudos() {
         renderConteudos(cortes);
     } catch (err) {
         console.error('[EditMind] Erro ao carregar "Meus Conteúdos":', err);
+        setConteudosFeedback(err.message || 'Falha ao carregar conteúdos.');
         renderEmptyStateConteudos();
     }
 }
+
+async function excluirCorte(corteId, btn) {
+    if (!corteId) return;
+    if (!confirm('Tem certeza que deseja excluir este recorte?')) return;
+
+    const token = localStorage.getItem('editmind_token') || window.Auth?.getToken?.();
+    if (!token) {
+        window.Auth.logout();
+        return;
+    }
+
+    try {
+        setConteudosFeedback('');
+        console.log(`[EditMind] Chamando endpoint DELETE /api/cortes/${corteId}`);
+        if (btn) btn.disabled = true;
+
+        const res = await fetch(`${API}/api/cortes/${corteId}`, {
+            method: 'DELETE',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+            },
+        });
+        console.log(`[EditMind] DELETE /api/cortes/${corteId} status HTTP: ${res.status}`);
+
+        if (res.status === 401) {
+            window.Auth.logout();
+            return;
+        }
+
+        const dados = await res.json();
+        if (!res.ok || !dados?.sucesso) {
+            throw new Error(dados?.detail || dados?.mensagem || 'Erro ao excluir recorte.');
+        }
+
+        window.meusCortes = window.meusCortes.filter(c => c.id !== corteId);
+        const card = document.querySelector(`.conteudo-card[data-corte-id="${corteId}"]`);
+        card?.remove();
+        console.log(`[EditMind] Recorte ${corteId} removido da interface.`);
+        setConteudosFeedback('Recorte excluído com sucesso.', 'ok');
+
+        if (window.meusCortes.length === 0) {
+            renderEmptyStateConteudos();
+        }
+    } catch (err) {
+        console.error(`[EditMind] Erro ao excluir recorte ${corteId}:`, err);
+        setConteudosFeedback(err.message || 'Falha ao excluir recorte.');
+        alert(err.message || 'Falha ao excluir recorte.');
+    } finally {
+        if (btn) btn.disabled = false;
+    }
+}
+
+document.addEventListener('click', (event) => {
+    const btn = event.target.closest('.btn-excluir-corte');
+    if (!btn) return;
+    const corteId = btn.getAttribute('data-corte-id');
+    excluirCorte(corteId, btn);
+});
