@@ -72,7 +72,7 @@ STORAGE_BUCKET = "cortes"
 OUTPUT_DIR = Path("outputs")
 OUTPUT_DIR.mkdir(exist_ok=True)
 
-MAX_DURACAO_S = 600
+MAX_DURACAO_S = 640
 MAX_BYTES = 200 * 1024 * 1024
 EXTS_VALIDAS = {".mp4", ".mov", ".avi", ".webm"}
 
