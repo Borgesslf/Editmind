@@ -107,7 +107,7 @@ const Auth = Object.freeze({
     // o token do hash da URL.
 
     async redefinirSenha(token, novaSenha) {
-        if (!token)           return { sucesso: false, erro: 'Token inválido.' };
+        if (!token) return { sucesso: false, erro: 'Token inválido.' };
         if (novaSenha.length < 6) return { sucesso: false, erro: 'Senha mínima: 6 caracteres.' };
         return await this._post('/api/auth/redefinir-senha',
             { token, nova_senha: novaSenha });

@@ -10,12 +10,12 @@ const CONFIG = Object.freeze({
 
     // ── Supabase (necessário para reset de senha no frontend) ─
     // Copie do Dashboard Supabase > Project Settings > API
-    SUPABASE_URL:      'https://SEU-PROJETO.supabase.co',
+    SUPABASE_URL: 'https://SEU-PROJETO.supabase.co',
     SUPABASE_ANON_KEY: 'eyJ...',   // chave "anon public"
 
     // ── localStorage keys ─────────────────────────────────────
     TOKEN_KEY: 'editmind_token',
-    USER_KEY:  'editmind_user',
+    USER_KEY: 'editmind_user',
 
     // ── Misc ──────────────────────────────────────────────────
     VERSAO: '3.0.0',

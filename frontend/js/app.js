@@ -8,27 +8,29 @@
    - Fetch com AbortController (timeout 5min)
    ============================================================ */
 
-const API     = window.CONFIG?.API_URL ?? '';
+const API = window.CONFIG?.API_URL ?? '';
 const TIMEOUT = 5 * 60 * 1000; // 5 minutos
 
 // ── DOM ───────────────────────────────────────────────────────
 const $ = id => document.getElementById(id);
 
 const painelUpload = $('painel-upload');
-const painelIa     = $('painel-ia');
-const areaSoltar   = $('area-soltar');
-const entrada      = $('entrada-arquivo');
-const nomeArq      = $('nome-arquivo');
-const barraP       = $('barra-progresso');
-const porcT        = $('porcentagem-envio');
-const msgT         = $('mensagem-envio');
-const metaRes      = $('meta-res');
-const metaFps      = $('meta-fps');
-const metaDur      = $('meta-duracao');
-const txtTransc    = $('texto-transcricao');
-const corteIni     = $('corte-inicio');
-const corteFim     = $('corte-fim');
-const corteMot     = $('corte-motivo');
+const painelIa = $('painel-ia');
+const areaSoltar = $('area-soltar');
+const entrada = $('entrada-arquivo');
+const nomeArq = $('nome-arquivo');
+const barraP = $('barra-progresso');
+const porcT = $('porcentagem-envio');
+const msgT = $('mensagem-envio');
+const metaRes = $('meta-res');
+const metaFps = $('meta-fps');
+const metaDur = $('meta-duracao');
+const txtTransc = $('texto-transcricao');
+const corteIni = $('corte-inicio');
+const corteFim = $('corte-fim');
+const corteMot = $('corte-motivo');
+const conteudosLista = $('conteudos-lista');
+const conteudosEmptyTemplate = $('conteudos-empty-template');
 
 window.ultimoResultado = null;
 
@@ -41,7 +43,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Exibe nome do usuário
-    const u  = window.Auth.getUsuario();
+    const u = window.Auth.getUsuario();
     const el = $('user-nome');
     if (el && u) el.textContent = u.nome || u.email?.split('@')[0] || 'Usuário';
 
@@ -69,10 +71,10 @@ let _iv = null, _t0 = null;
 function startTimer() {
     _t0 = Date.now();
     _iv = setInterval(() => {
-        const s  = Math.floor((Date.now() - _t0) / 1000);
+        const s = Math.floor((Date.now() - _t0) / 1000);
         const el = $('timer-display');
         if (el) el.textContent =
-            `${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;
+            `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
     }, 1000);
 }
 
@@ -85,7 +87,7 @@ function stopTimer() {
 
 // ── UI HELPERS ────────────────────────────────────────────────
 function getAuthToken() {
-    return localStorage.getItem('editmind_token') || window.Auth?.getToken?.() || null;
+    return window.Auth?.getToken?.() || localStorage.getItem('editmind_token') || null;
 }
 
 function getAuthHeaders(extra = {}) {
@@ -98,54 +100,54 @@ function getAuthHeaders(extra = {}) {
 
 function pct(v) {
     if (barraP) barraP.style.width = v + '%';
-    if (porcT)  porcT.textContent  = v + '%';
+    if (porcT) porcT.textContent = v + '%';
 }
 
 function msg(html, cor = '#6b7280') {
     if (!msgT) return;
-    msgT.innerHTML   = html;
+    msgT.innerHTML = html;
     msgT.style.color = cor;
 }
 
 function animCard(el, val) {
     if (!el) return;
     el.style.transition = 'none';
-    el.style.opacity    = '0';
-    el.style.transform  = 'translateY(6px)';
-    el.textContent      = val;
+    el.style.opacity = '0';
+    el.style.transform = 'translateY(6px)';
+    el.textContent = val;
     requestAnimationFrame(() => requestAnimationFrame(() => {
         el.style.transition = 'opacity .4s ease, transform .4s ease';
-        el.style.opacity    = '1';
-        el.style.transform  = 'translateY(0)';
+        el.style.opacity = '1';
+        el.style.transform = 'translateY(0)';
     }));
 }
 
 function resetUI() {
     pct(0);
     msg('Motor em standby.');
-    if (barraP)  barraP.style.background = '';
-    if (nomeArq) nomeArq.textContent     = 'Aguardando feed...';
-    if (metaRes) metaRes.textContent     = '—';
-    if (metaFps) metaFps.textContent     = '—';
-    if (metaDur) metaDur.textContent     = '—';
-    if (entrada) entrada.value           = '';
+    if (barraP) barraP.style.background = '';
+    if (nomeArq) nomeArq.textContent = 'Aguardando feed...';
+    if (metaRes) metaRes.textContent = '—';
+    if (metaFps) metaFps.textContent = '—';
+    if (metaDur) metaDur.textContent = '—';
+    if (entrada) entrada.value = '';
     const te = $('timer-display');
     if (te) te.textContent = '00:00';
 }
 
 // ── DRAG & DROP ───────────────────────────────────────────────
 if (areaSoltar) {
-    ['dragenter','dragover','dragleave','drop'].forEach(e =>
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(e =>
         areaSoltar.addEventListener(e, ev => { ev.preventDefault(); ev.stopPropagation(); }));
-    ['dragenter','dragover'].forEach(e =>
+    ['dragenter', 'dragover'].forEach(e =>
         areaSoltar.addEventListener(e, () => {
             areaSoltar.style.borderColor = '#f97316';
-            areaSoltar.style.background  = 'rgba(249,115,22,0.06)';
+            areaSoltar.style.background = 'rgba(249,115,22,0.06)';
         }));
-    ['dragleave','drop'].forEach(e =>
+    ['dragleave', 'drop'].forEach(e =>
         areaSoltar.addEventListener(e, () => {
             areaSoltar.style.borderColor = '';
-            areaSoltar.style.background  = '';
+            areaSoltar.style.background = '';
         }));
     areaSoltar.addEventListener('drop', e => processar(e.dataTransfer.files));
 }
@@ -156,7 +158,7 @@ async function processar(arquivos) {
     if (!arquivos?.length) return;
     const arq = arquivos[0];
     const ext = arq.name.split('.').pop().toLowerCase();
-    if (!['mp4','mov','avi','webm'].includes(ext)) {
+    if (!['mp4', 'mov', 'avi', 'webm'].includes(ext)) {
         alert('Aceito apenas: mp4, mov, avi, webm.');
         return;
     }
@@ -165,10 +167,10 @@ async function processar(arquivos) {
         form.append('file', arq);
         if (nomeArq) nomeArq.textContent = arq.name;
         return fetch(`${API}/api/processar`, {
-            method:  'POST',
+            method: 'POST',
             headers: getAuthHeaders(),
-            body:    form,
-            signal:  ctrl.signal,
+            body: form,
+            signal: ctrl.signal,
         });
     });
 }
@@ -176,8 +178,8 @@ async function processar(arquivos) {
 // ── PROCESSAR VIA YOUTUBE (pipeline completo) ─────────────────
 window.processarYouTube = async function () {
     const input = $('input-youtube');
-    const btn   = $('btn-yt-processar');
-    const link  = input?.value.trim();
+    const btn = $('btn-yt-processar');
+    const link = input?.value.trim();
 
     if (!link || (!link.includes('youtube.com') && !link.includes('youtu.be'))) {
         alert('Insira um link válido do YouTube.');
@@ -190,9 +192,9 @@ window.processarYouTube = async function () {
 
     await _executar(async (ctrl) =>
         fetch(`${API}/api/processar-youtube`, {
-            method:  'POST',
+            method: 'POST',
             headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
-            body:   JSON.stringify({ url: link }),
+            body: JSON.stringify({ url: link }),
             signal: ctrl.signal,
         })
     );
@@ -207,22 +209,22 @@ async function _executar(fetchFn) {
     startTimer();
 
     const etapas = [
-        { p: 10, m: '📤 Enviando para o servidor...',        d: 0     },
-        { p: 25, m: '🎵 FFmpeg extraindo áudio...',          d: 5000  },
-        { p: 50, m: '🎙️ Whisper-1 transcrevendo...',        d: 12000 },
-        { p: 70, m: '✏️ GPT-4o-mini corrigindo texto...',   d: 22000 },
-        { p: 85, m: '🤖 GPT-4o analisando viralidade...',    d: 30000 },
-        { p: 93, m: '✂️ Cortando o trecho...',               d: 40000 },
+        { p: 10, m: '📤 Enviando para o servidor...', d: 0 },
+        { p: 25, m: '🎵 FFmpeg extraindo áudio...', d: 5000 },
+        { p: 50, m: '🎙️ Whisper-1 transcrevendo...', d: 12000 },
+        { p: 70, m: '✏️ GPT-4o-mini corrigindo texto...', d: 22000 },
+        { p: 85, m: '🤖 GPT-4o analisando viralidade...', d: 30000 },
+        { p: 93, m: '✂️ Cortando o trecho...', d: 40000 },
     ];
     const tids = etapas.map(({ p, m, d }) => setTimeout(() => { pct(p); msg(m); }, d));
 
     const ctrl = new AbortController();
-    const tId  = setTimeout(() => ctrl.abort(), TIMEOUT);
+    const tId = setTimeout(() => ctrl.abort(), TIMEOUT);
 
     try {
-        const res     = await fetchFn(ctrl);
+        const res = await fetchFn(ctrl);
         clearTimeout(tId); tids.forEach(clearTimeout);
-        const data    = await res.json();
+        const data = await res.json();
         const elapsed = stopTimer();
 
         if (!res.ok) {
@@ -238,8 +240,8 @@ async function _executar(fetchFn) {
         pct(100);
         window.ultimoResultado = { ...data, elapsed };
 
-        const mm = String(Math.floor(elapsed/60)).padStart(2,'0');
-        const ss = String(elapsed%60).padStart(2,'0');
+        const mm = String(Math.floor(elapsed / 60)).padStart(2, '0');
+        const ss = String(elapsed % 60).padStart(2, '0');
         msg(`
             <div style="display:flex;flex-direction:column;gap:10px;margin-top:10px;">
                 <span style="font-size:11px;color:#22c55e;font-weight:700;">
@@ -272,22 +274,22 @@ window.mostrarResultado = function () {
 
 function exibirResultado(data) {
     if (painelUpload) painelUpload.classList.add('hidden');
-    if (painelIa)     { painelIa.classList.remove('hidden', 'fade-out'); }
+    if (painelIa) { painelIa.classList.remove('hidden', 'fade-out'); }
 
     if (txtTransc) txtTransc.textContent = data.transcricao || '—';
 
     const c = data.corte_sugerido || {};
     if (corteIni) corteIni.textContent = c.inicio || '00:00:00';
-    if (corteFim) corteFim.textContent = c.fim    || '00:00:00';
+    if (corteFim) corteFim.textContent = c.fim || '00:00:00';
     if (corteMot) corteMot.textContent = c.motivo || '—';
 
     const inf = data.detalhes_tecnicos || {};
-    const em  = $('ia-meta-info');
+    const em = $('ia-meta-info');
     if (em && inf.resolucao) em.textContent = `${inf.resolucao} • ${inf.fps} FPS • ${inf.duracao_segundos}s`;
     if (data.elapsed !== undefined) {
         const tp = $('tempo-processamento');
         if (tp) tp.textContent =
-            `Processado em ${String(Math.floor(data.elapsed/60)).padStart(2,'0')}:${String(data.elapsed%60).padStart(2,'0')}`;
+            `Processado em ${String(Math.floor(data.elapsed / 60)).padStart(2, '0')}:${String(data.elapsed % 60).padStart(2, '0')}`;
     }
 
     // ── Video player + botões (com URL Supabase ou fallback local) ──
@@ -346,7 +348,7 @@ function exibirResultado(data) {
 window.resetarNovoCorte = function () {
     if (painelIa) painelIa.classList.add('fade-out');
     setTimeout(() => {
-        if (painelIa)     { painelIa.classList.add('hidden'); painelIa.classList.remove('fade-out'); }
+        if (painelIa) { painelIa.classList.add('hidden'); painelIa.classList.remove('fade-out'); }
         if (painelUpload) painelUpload.classList.remove('hidden');
         resetUI();
         window.ultimoResultado = null;
@@ -356,8 +358,8 @@ window.resetarNovoCorte = function () {
 // ── DOWNLOAD DO YOUTUBE (só baixar, sem processar) ────────────
 window.baixarYouTube = async function () {
     const input = $('input-youtube');
-    const btn   = $('btn-yt-baixar');
-    const link  = input?.value.trim();
+    const btn = $('btn-yt-baixar');
+    const link = input?.value.trim();
 
     if (!link || (!link.includes('youtube.com') && !link.includes('youtu.be'))) {
         alert('Insira um link válido do YouTube.');
@@ -367,9 +369,9 @@ window.baixarYouTube = async function () {
 
     try {
         const res = await fetch(`${API}/api/download-youtube`, {
-            method:  'POST',
+            method: 'POST',
             headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
-            body:   JSON.stringify({ url: link }),
+            body: JSON.stringify({ url: link }),
             signal: AbortSignal.timeout(300_000),
         });
 
@@ -379,9 +381,9 @@ window.baixarYouTube = async function () {
         }
 
         const blob = await res.blob();
-        const url  = URL.createObjectURL(blob);
-        const a    = document.createElement('a');
-        a.href     = url;
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
         a.download = 'Video_EditMind.mp4';
         document.body.appendChild(a);
         a.click();
@@ -406,4 +408,99 @@ window.mudarAba = function (id) {
     document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
     document.querySelector(`.nav-item[data-aba="${id}"]`)?.classList.add('active');
     $(`aba-${id}`)?.classList.add('active');
+
+    if (id === 'conteudos') {
+        console.log('[EditMind] Clique na aba "Meus Conteúdos" detectado.');
+        carregarMeusConteudos();
+    }
 };
+
+function montarUrlVideo(videoUrl) {
+    if (!videoUrl) return '#';
+    return videoUrl.startsWith('http') ? videoUrl : `${API}${videoUrl}`;
+}
+
+function formatarDataPtBR(isoString) {
+    if (!isoString) return 'Data indisponível';
+    const data = new Date(isoString);
+    if (Number.isNaN(data.getTime())) return 'Data inválida';
+    return data.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+}
+
+function escaparHtml(texto) {
+    return String(texto ?? '')
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#39;');
+}
+
+function renderEmptyStateConteudos() {
+    if (!conteudosLista || !conteudosEmptyTemplate) return;
+    conteudosLista.innerHTML = conteudosEmptyTemplate.innerHTML;
+}
+
+function renderConteudos(cortes) {
+    if (!conteudosLista) return;
+
+    if (!Array.isArray(cortes) || cortes.length === 0) {
+        renderEmptyStateConteudos();
+        return;
+    }
+
+    const cardsHtml = cortes.map((corte) => {
+        const titulo = escaparHtml(corte.titulo || 'Sem título');
+        const dataFmt = formatarDataPtBR(corte.criado_em);
+        const urlVideo = montarUrlVideo(corte.video_url);
+        return `
+            <article class="tool-bentoCard" style="display:flex;flex-direction:column;gap:12px;">
+                <video src="${urlVideo}" controls preload="metadata" style="width:100%;border-radius:12px;background:#000;"></video>
+                <h3 class="tool-title" style="margin:0;">${titulo}</h3>
+                <p class="tool-description" style="margin:0;">Criado em: ${dataFmt}</p>
+                <div class="result-btns" style="justify-content:flex-start;">
+                    <a href="${urlVideo}" target="_blank" rel="noopener noreferrer" class="btn-assistir">▶ Abrir vídeo</a>
+                    <a href="${urlVideo}" download="Corte_EditMind.mp4" class="btn-download">⬇ Baixar</a>
+                </div>
+            </article>
+        `;
+    }).join('');
+
+    conteudosLista.innerHTML = cardsHtml;
+}
+
+async function carregarMeusConteudos() {
+    const token = localStorage.getItem('editmind_token') || window.Auth?.getToken?.();
+    if (!token) {
+        window.Auth.logout();
+        return;
+    }
+
+    try {
+        console.log('[EditMind] Chamando endpoint GET /api/meus-cortes...');
+        const res = await fetch(`${API}/api/meus-cortes`, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+            },
+        });
+        console.log(`[EditMind] /api/meus-cortes status HTTP: ${res.status}`);
+
+        if (res.status === 401) {
+            window.Auth.logout();
+            return;
+        }
+
+        const dados = await res.json();
+        if (!res.ok || !dados?.sucesso) {
+            throw new Error(dados?.detail || 'Falha ao carregar conteúdos.');
+        }
+
+        const cortes = Array.isArray(dados.cortes) ? dados.cortes : [];
+        console.log(`[EditMind] /api/meus-cortes itens recebidos: ${cortes.length}`);
+        renderConteudos(cortes);
+    } catch (err) {
+        console.error('[EditMind] Erro ao carregar "Meus Conteúdos":', err);
+        renderEmptyStateConteudos();
+    }
+}
