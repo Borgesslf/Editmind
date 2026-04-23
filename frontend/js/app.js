@@ -29,6 +29,8 @@ const txtTransc    = $('texto-transcricao');
 const corteIni     = $('corte-inicio');
 const corteFim     = $('corte-fim');
 const corteMot     = $('corte-motivo');
+const conteudosLista = $('conteudos-lista');
+const conteudosEmptyTemplate = $('conteudos-empty-template');
 
 window.ultimoResultado = null;
 
@@ -85,7 +87,7 @@ function stopTimer() {
 
 // ── UI HELPERS ────────────────────────────────────────────────
 function getAuthToken() {
-    return localStorage.getItem('editmind_token') || window.Auth?.getToken?.() || null;
+    return window.Auth?.getToken?.() || localStorage.getItem('editmind_token') || null;
 }
 
 function getAuthHeaders(extra = {}) {
@@ -406,4 +408,90 @@ window.mudarAba = function (id) {
     document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
     document.querySelector(`.nav-item[data-aba="${id}"]`)?.classList.add('active');
     $(`aba-${id}`)?.classList.add('active');
+
+    if (id === 'conteudos') {
+        console.log('[EditMind] Clique na aba "Meus Conteúdos" detectado.');
+        carregarMeusConteudos();
+    }
 };
+
+function montarUrlVideo(videoUrl) {
+    if (!videoUrl) return '#';
+    return videoUrl.startsWith('http') ? videoUrl : `${API}${videoUrl}`;
+}
+
+function formatarDataPtBR(isoString) {
+    if (!isoString) return 'Data indisponível';
+    const data = new Date(isoString);
+    if (Number.isNaN(data.getTime())) return 'Data inválida';
+    return data.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+}
+
+function renderEmptyStateConteudos() {
+    if (!conteudosLista || !conteudosEmptyTemplate) return;
+    conteudosLista.innerHTML = conteudosEmptyTemplate.innerHTML;
+}
+
+function renderConteudos(cortes) {
+    if (!conteudosLista) return;
+
+    if (!Array.isArray(cortes) || cortes.length === 0) {
+        renderEmptyStateConteudos();
+        return;
+    }
+
+    const cardsHtml = cortes.map((corte) => {
+        const titulo = corte.titulo || 'Sem título';
+        const dataFmt = formatarDataPtBR(corte.criado_em);
+        const urlVideo = montarUrlVideo(corte.video_url);
+        return `
+            <article class="tool-bentoCard" style="display:flex;flex-direction:column;gap:12px;">
+                <video src="${urlVideo}" controls preload="metadata" style="width:100%;border-radius:12px;background:#000;"></video>
+                <h3 class="tool-title" style="margin:0;">${titulo}</h3>
+                <p class="tool-description" style="margin:0;">Criado em: ${dataFmt}</p>
+                <div class="result-btns" style="justify-content:flex-start;">
+                    <a href="${urlVideo}" target="_blank" rel="noopener noreferrer" class="btn-assistir">▶ Abrir vídeo</a>
+                    <a href="${urlVideo}" download="Corte_EditMind.mp4" class="btn-download">⬇ Baixar</a>
+                </div>
+            </article>
+        `;
+    }).join('');
+
+    conteudosLista.innerHTML = cardsHtml;
+}
+
+async function carregarMeusConteudos() {
+    const token = localStorage.getItem('editmind_token');
+    if (!token) {
+        window.Auth.logout();
+        return;
+    }
+
+    try {
+        console.log('[EditMind] Chamando endpoint GET /api/meus-cortes...');
+        const res = await fetch(`${API}/api/meus-cortes`, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+            },
+        });
+        console.log(`[EditMind] /api/meus-cortes status HTTP: ${res.status}`);
+
+        if (res.status === 401) {
+            window.Auth.logout();
+            return;
+        }
+
+        const dados = await res.json();
+        if (!res.ok || !dados?.sucesso) {
+            throw new Error(dados?.detail || 'Falha ao carregar conteúdos.');
+        }
+
+        const cortes = Array.isArray(dados.cortes) ? dados.cortes : [];
+        console.log(`[EditMind] /api/meus-cortes itens recebidos: ${cortes.length}`);
+        renderConteudos(cortes);
+    } catch (err) {
+        console.error('[EditMind] Erro ao carregar "Meus Conteúdos":', err);
+        renderEmptyStateConteudos();
+    }
+}
