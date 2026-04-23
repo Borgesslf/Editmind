@@ -726,14 +726,27 @@ async def meus_cortes(usuario: dict = Depends(get_current_user)):
         raise HTTPException(503, "Banco indisponível.")
 
     try:
+        user_email = usuario.get("email")
+        user_id = usuario.get("id")
+        logger.info("GET /api/meus-cortes chamado")
+        logger.info(f"/api/meus-cortes usuário reconhecido: email={user_email} id={user_id}")
+
+        if not user_email and not user_id:
+            raise HTTPException(401, "Usuário inválido.")
+
+        filtro_usuario = user_email or user_id
         resp = await asyncio.to_thread(
             lambda: supabase_admin.table("cortes")
             .select("id, user_email, video_url, titulo, criado_em")
-            .eq("user_email", usuario["email"])
+            .eq("user_email", filtro_usuario)
             .order("criado_em", desc=True)
             .execute()
         )
-        return {"sucesso": True, "cortes": resp.data or []}
+        cortes = resp.data or []
+        logger.info(f"/api/meus-cortes registros encontrados: {len(cortes)}")
+        return {"sucesso": True, "cortes": cortes}
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Erro ao buscar cortes do usuário: {e}")
         raise HTTPException(500, "Erro ao buscar histórico de cortes.")

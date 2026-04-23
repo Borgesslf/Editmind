@@ -186,14 +186,17 @@
             <h2 class="title">Meus Conteúdos</h2>
             <p class="subtitle">Sua esteira de cortes aprovados.</p>
         </div>
-        <div class="tools-grid">
-            <div class="tool-bentoCard empty-state">
+        <div id="conteudos-lista" class="tools-grid"></div>
+        <template id="conteudos-empty-template">
+            <div class="tools-grid">
+                <div class="tool-bentoCard empty-state">
                 <img src="assets/img/content.svg" alt="content" class="content-icon">
                 <h3 class="upload-title">Vazio por aqui</h3>
                 <p class="upload-subtitle">Inicie fazendo o upload do seu primeiro arquivo bruto.</p>
                 <button onclick="mudarAba('inicio')" class="btn-voltaInicio">Criar Projeto</button>
             </div>
-        </div>
+            </div>
+        </template>
     </section>
 
     <!-- ══ ABA: FERRAMENTAS ═══════════════════════════════════ -->
