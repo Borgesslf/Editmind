@@ -88,18 +88,20 @@
                             <span class="card-label">Configuração dos recortes</span>
                         </div>
 
-                        <label class="input-label" for="quantidade-recortes">Quantidade de recortes</label>
-                        <select id="quantidade-recortes" class="input-field select-field">
-                            <option value="1">1 recorte</option>
-                            <option value="2">2 recortes</option>
-                            <option value="3">3 recortes</option>
-                        </select>
+                        <div class="num-cortes-row" aria-label="Quantidade de recortes">
+                            <span class="num-cortes-label">Recortes</span>
+                            <div class="num-cortes-btns">
+                                <button type="button" class="btn-num-corte active" data-n="1">1</button>
+                                <button type="button" class="btn-num-corte" data-n="2">2</button>
+                                <button type="button" class="btn-num-corte" data-n="3">3</button>
+                            </div>
+                        </div>
 
                         <div id="recortes-config" class="recortes-config"></div>
 
                         <label class="vertical-option">
                             <input type="checkbox" id="formato-vertical">
-                            <span>Gerar em formato vertical 9:16 sem achatar</span>
+                            <span>Gerar em formato vertical 9:16 com fundo borrado, sem achatar</span>
                         </label>
                     </div>
                 </div>

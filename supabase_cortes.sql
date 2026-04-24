@@ -46,3 +46,9 @@ alter table public.cortes add column if not exists duracao_tipo text;
 alter table public.cortes add column if not exists formato_vertical boolean not null default false;
 
 create index if not exists idx_cortes_foco on public.cortes (foco);
+
+
+-- Migração V5.1: metadados opcionais adicionais para histórico e auditoria.
+alter table public.cortes add column if not exists motivo text;
+alter table public.cortes add column if not exists duracao_segundos numeric;
+alter table public.cortes add column if not exists indice_corte integer;

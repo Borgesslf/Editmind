@@ -1374,3 +1374,98 @@ button:hover, a:hover, .nav-item:hover, .engine-card:hover, .upload-card:hover {
 .conteudo-date {
     margin: 0;
 }
+
+
+/* ── V5.1 — CONFIGURAÇÃO DE RECORTES EM BOTÕES ───────────── */
+.num-cortes-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+}
+
+.num-cortes-label,
+.config-row-label {
+    font-size: 10px;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: .12em;
+    color: #6b7280;
+}
+
+.num-cortes-btns,
+.preset-btns,
+.foco-btns {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.btn-num-corte {
+    width: 38px;
+    height: 38px;
+    border-radius: 999px;
+    border: 1px solid #374151;
+    background: rgba(255,255,255,.03);
+    color: #9ca3af;
+    font-size: 13px;
+    font-weight: 900;
+    cursor: pointer;
+    transition: transform .2s ease, background .2s ease, border-color .2s ease, color .2s ease;
+}
+
+.btn-num-corte:hover,
+.btn-num-corte.active {
+    border-color: #f97316;
+    background: rgba(249,115,22,.15);
+    color: #f97316;
+}
+
+.config-row {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.btn-preset,
+.btn-foco {
+    padding: 7px 12px;
+    border-radius: 999px;
+    border: 1px solid #374151;
+    background: rgba(255,255,255,.025);
+    color: #9ca3af;
+    font-size: 11px;
+    font-weight: 800;
+    cursor: pointer;
+    transition: transform .2s ease, background .2s ease, border-color .2s ease, color .2s ease;
+    white-space: nowrap;
+}
+
+.btn-preset:hover,
+.btn-foco:hover,
+.btn-preset.active,
+.btn-foco.active {
+    border-color: rgba(249,115,22,.65);
+    background: rgba(249,115,22,.12);
+    color: #f97316;
+}
+
+.recorte-config-item {
+    background: rgba(255,255,255,.03);
+}
+
+@media (min-width: 760px) {
+    .config-row {
+        flex-direction: row;
+        align-items: flex-start;
+    }
+    .config-row-label {
+        width: 82px;
+        padding-top: 8px;
+        flex-shrink: 0;
+    }
+}
