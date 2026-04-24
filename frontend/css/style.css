@@ -1611,7 +1611,6 @@ a,
 .conteudo-select-wrap { display:inline-flex;align-items:center;gap:8px;font-size:11px;font-weight:700;color:#9ca3af;margin-bottom:8px; }
 .conteudo-select { accent-color:#f97316; }
 .account-form-grid { display:grid;grid-template-columns:1fr;gap:10px;align-items:center;margin-bottom:12px; }
-.account-form-grid .btn-secondary-lite { justify-self:center; width:100%; max-width:220px; }
 .account-card .input-field { margin-bottom:0; }
 /* account-form-grid 3-col: ver bloco v7 (@media 769px) */
 
@@ -2112,13 +2111,7 @@ svg {
 
     /* Profile form: 3 colunas */
     .account-form-grid {
-        grid-template-columns: 120px 1fr 170px;
-    }
-
-    .account-form-grid .btn-secondary-lite {
-        width: 100%;
-        max-width: 170px;
-        justify-self: center;
+        grid-template-columns: 120px 1fr auto;
     }
 
     #aba-configs .tools-grid {
