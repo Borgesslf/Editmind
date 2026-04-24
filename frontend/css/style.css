@@ -1528,8 +1528,9 @@ a,
 /* ── ENGINE CARDS v5.1 ────────────────────────────────────── */
 .engine-grid {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 20px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 16px;
+    width: 100%;
 }
 
 .engine-card {
@@ -1598,7 +1599,21 @@ a,
     line-height: 1.5;
 }
 
-/* engine-grid responsivo controlado pelo bloco v7 */
+.engine-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 12px;
+    width: 100%;
+}
+
+/* 3 colunas iguais a partir de 600px — centralizadas */
+@media (min-width: 600px) {
+    .engine-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 16px;
+        justify-items: stretch;
+    }
+}
 
 .conteudos-feedback { text-align:center;font-size:12px;font-weight:700;margin-bottom:14px;min-height:18px; }
 /* conteudos-toolbar base: controlado pelo bloco v7 — não redefinir aqui */
@@ -1842,19 +1857,20 @@ svg {
     grid-template-columns: 1fr;
 }
 
-/* ── ENGINE GRID BASE ─────────────────────────────────────── */
-.engine-grid {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 12px;
-}
+/* ── ENGINE GRID BASE — definido acima junto com breakpoint 600px ─── */
 
 /* ── CONFIGS / PROFILE BASE ───────────────────────────────── */
 .engine-configs-layout {
-    max-width: 980px;
+    max-width: 860px;
     margin: 0 auto;
     display: grid;
     gap: 20px;
+}
+
+#engine-configs > .tool-bentoCard:first-child {
+    width: 100%;
+    max-width: 860px;
+    align-self: center;
 }
 
 #aba-configs .tools-grid {
@@ -1863,9 +1879,17 @@ svg {
     align-items: stretch;
 }
 
-#aba-configs .tool-bentoCard {
+/* Card de preset: ocupa largura total do engine-configs-layout */
+#engine-configs > .tool-bentoCard:first-child {
     width: 100%;
-    max-width: 600px;
+    max-width: none;
+    align-self: stretch;
+}
+
+/* Card de conta/perfil: centralizado, mais estreito */
+#engine-configs .account-card {
+    width: 100%;
+    max-width: 860px;
     align-self: center;
 }
 
@@ -2072,11 +2096,7 @@ svg {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
-    /* Engine: 3 colunas */
-    .engine-grid {
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: 16px;
-    }
+    /* Engine: 3 colunas — definido no breakpoint 600px acima */
 
     /* Toolbar conteúdos horizontal */
     .conteudos-toolbar {
