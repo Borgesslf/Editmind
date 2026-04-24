@@ -8,6 +8,9 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800;900&display=swap" rel="stylesheet">
     <style>
+        *, *::before, *::after { box-sizing: border-box; }
+        html, body { max-width: 100%; overflow-x: hidden; }
+        img, video, svg { max-width: 100%; height: auto; }
         body {
             font-family: 'Inter', sans-serif;
         }
@@ -76,21 +79,21 @@
 </head>
 
 <body class="bg-[#0b0d11] text-gray-100 min-h-screen flex flex-col overflow-x-hidden">
-    <header class="w-full flex justify-between items-center px-6 md:px-12 py-8 z-20">
-        <h1 class="text-2xl font-black italic tracking-tighter text-white">
+    <header class="w-full flex flex-wrap gap-3 justify-between items-center px-4 sm:px-6 md:px-12 py-5 md:py-8 z-20">
+        <h1 class="text-xl sm:text-2xl font-black italic tracking-tighter text-white">
             EDIT<span class="text-[#f97316]">MIND</span>
             <span
-                class="ml-2 text-[10px] bg-white/10 px-2 py-1 rounded text-gray-400 not-italic tracking-normal">DEMO</span>
+                class="ml-2 text-[9px] sm:text-[10px] bg-white/10 px-2 py-1 rounded text-gray-400 not-italic tracking-normal">DEMO</span>
         </h1>
         <a href="login.html"
-            class="text-xs font-black uppercase tracking-widest text-gray-400 hover:text-white transition-colors">Sair
+            class="w-full sm:w-auto text-center text-[11px] font-black uppercase tracking-widest text-gray-400 hover:text-white transition-colors">Sair
             da Demo</a>
     </header>
 
-    <main class="flex-grow flex flex-col items-center justify-center px-6 py-12">
+    <main class="flex-grow flex flex-col items-center justify-center px-4 sm:px-6 py-10 sm:py-12">
         <div class="max-w-6xl w-full">
             <div id="demo-header" class="text-center mb-12">
-                <h2 class="text-4xl md:text-6xl font-black text-white tracking-tighter mb-4">
+                <h2 class="text-3xl sm:text-4xl md:text-6xl font-black text-white tracking-tighter mb-4">
                     Veja a IA em <span class="text-[#f97316]">Ação</span>.
                 </h2>
                 <p class="text-gray-500 max-w-2xl mx-auto italic">
@@ -99,14 +102,14 @@
                 </p>
             </div>
 
-            <div class="glass-panel border border-gray-800/50 rounded-[2.5rem] p-6 md:p-10 shadow-2xl relative">
+            <div class="glass-panel border border-gray-800/50 rounded-[1.5rem] sm:rounded-[2.5rem] p-4 sm:p-6 md:p-10 shadow-2xl relative">
                 <div id="estado-inicial" class="text-center py-16">
                     <div
                         class="w-24 h-24 bg-[#f97316]/10 rounded-full flex items-center justify-center mx-auto mb-8 animate-bounce">
                         <span class="text-5xl">⚡</span>
                     </div>
                     <button onclick="iniciarSimulacao()"
-                        class="bg-white text-black font-black py-5 px-12 rounded-full text-xs uppercase tracking-[0.2em] hover:bg-[#f97316] hover:text-white transition-all shadow-2xl active:scale-95">
+                        class="w-full sm:w-auto bg-white text-black font-black py-4 sm:py-5 px-6 sm:px-12 rounded-full text-xs uppercase tracking-[0.2em] hover:bg-[#f97316] hover:text-white transition-all shadow-2xl active:scale-95">
                         Gerar Corte Viral Agora
                     </button>
                 </div>
@@ -216,7 +219,7 @@
             document.getElementById('estado-processando').classList.add('hidden');
             document.getElementById('estado-resultado').classList.remove('hidden');
             document.getElementById('demo-header').innerHTML = `
-                <h2 class="text-4xl md:text-6xl font-black text-white tracking-tighter mb-4">
+                <h2 class="text-3xl sm:text-4xl md:text-6xl font-black text-white tracking-tighter mb-4">
                     Demo <span class="text-[#f97316]">Pronta</span>
                 </h2>
                 <p class="text-gray-500 max-w-2xl mx-auto italic">

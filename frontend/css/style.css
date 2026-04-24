@@ -9,7 +9,7 @@
 
 body {
     font-family: 'Inter', sans-serif;
-    background: radial-gradient(circle at 50% -20%, #24150c, #000 80%);
+    background: #0b0d11;
     color: #e5e7eb;
     min-height: 100vh;
     display: flex;
@@ -68,11 +68,7 @@ body {
     align-items: stretch;
 }
 
-@media(min-width:900px) {
-    .tools-grid {
-        grid-template-columns: 1.2fr 1fr;
-    }
-}
+/* tools-grid 2-col controlado pelo bloco responsivo v7 */
 
 /* ── BENTO CARDS ──────────────────────────────────────────── */
 .tool-bentoCard {
@@ -940,8 +936,8 @@ body {
 }
 
 #aba-configs .tool-bentoCard {
-    width: 600px;
-    max-width: 100%;
+    width: 100%;
+    max-width: 600px;
 }
 
 #aba-ferramentas .tools-grid {
@@ -961,69 +957,9 @@ body {
     display: none;
 }
 
-/* ── RESPONSIVO ───────────────────────────────────────────── */
-@media(max-width:900px) {
-    #aba-ferramentas .tools-grid {
-        grid-template-columns: 1fr;
-    }
-}
+/* ── RESPONSIVO LEGADO (removido em v7 — ver bloco final) ─── */
 
-@media(max-width:768px) {
-    .header {
-        padding: 20px 24px;
-        flex-wrap: nowrap;
-    }
-
-    .main-container {
-        padding: 16px 24px 80px;
-    }
-
-    .logoEDIT {
-        font-size: 24px;
-    }
-
-    .status-column {
-        height: auto;
-    }
-
-    .tools-grid {
-        gap: 20px;
-    }
-
-    .result-btns {
-        flex-direction: column;
-    }
-}
-
-@media(max-width:480px) {
-    .header {
-        padding: 16px;
-        gap: 12px;
-    }
-
-    .logoEDIT {
-        font-size: 20px;
-    }
-
-    .main-container {
-        padding: 12px 16px 60px;
-    }
-
-    .nav-toggle {
-        width: 48px;
-        height: 48px;
-    }
-
-    .upload-card {
-        min-height: 300px;
-    }
-
-    .cut-value {
-        font-size: 28px;
-    }
-}
-
-/* ── HEADER USER + LOGOUT ─────────────────────────────────── */
+/* ── HEADER USER + LOGOUT — controlado pelo bloco v7 ─────── */
 .header {
     display: flex;
     align-items: center;
@@ -1031,20 +967,11 @@ body {
     gap: 12px;
 }
 
-.header-user {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    margin-left: auto;
-    margin-right: 8px;
-}
-
 .header-user-name {
     font-size: 11px;
     font-weight: 700;
     color: #6b7280;
     letter-spacing: 0.05em;
-    max-width: 160px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -1065,6 +992,8 @@ body {
     border-radius: 999px;
     cursor: pointer;
     transition: all 0.2s ease;
+    white-space: nowrap;
+    flex-shrink: 0;
 }
 
 .btn-logout-desktop:hover {
@@ -1082,17 +1011,17 @@ body {
     color: #ef4444 !important;
 }
 
-@media(max-width: 768px) {
+/* Esconde user info no mobile, mostra no tablet+ */
+@media (max-width: 768px) {
     .header-user-name {
         display: none;
     }
-
     .btn-logout-desktop {
         display: none;
     }
 }
 
-@media(min-width: 769px) {
+@media (min-width: 769px) {
     .nav-item-logout {
         display: none;
     }
@@ -1159,11 +1088,7 @@ button:hover, a:hover, .nav-item:hover, .engine-card:hover, .upload-card:hover {
     gap: 12px;
 }
 
-@media(min-width: 700px) {
-    .recorte-config-grid {
-        grid-template-columns: 1fr 1fr;
-    }
-}
+/* recorte-config-grid responsivo: ver bloco v7 (@media 600px+) */
 
 .vertical-option {
     display: flex;
@@ -1231,7 +1156,7 @@ button:hover, a:hover, .nav-item:hover, .engine-card:hover, .upload-card:hover {
     gap: 20px;
 }
 
-@media(min-width: 760px) {
+@media(min-width: 769px) {
     .engine-options {
         grid-template-columns: repeat(3, 1fr);
     }
@@ -1339,7 +1264,7 @@ button:hover, a:hover, .nav-item:hover, .engine-card:hover, .upload-card:hover {
     font-size: 12px;
 }
 
-@media(min-width: 650px) {
+@media(min-width: 600px) {
     .resultado-meta-grid {
         grid-template-columns: repeat(2, 1fr);
     }
@@ -1394,15 +1319,7 @@ button:hover, a:hover, .nav-item:hover, .engine-card:hover, .upload-card:hover {
    Mantém a base V5 e aplica a UI final de ferramentas, engine e cortes.
    ============================================================ */
 
-body {
-    font-family: 'Inter', sans-serif;
-    /* Background unificado — igual ao fundo da landing page */
-    background: #0b0d11;
-    color: #e5e7eb;
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-}
+/* body: definido no topo do arquivo (fundo unificado #0b0d11) */
 
 /* Apenas elementos realmente clicáveis devem parecer clicáveis */
 .tool-bentoCard:not(.upload-card),
@@ -1681,16 +1598,10 @@ a,
     line-height: 1.5;
 }
 
-@media(max-width:700px) {
-    .engine-grid {
-        grid-template-columns: 1fr;
-        gap: 12px;
-    }
-}
-
+/* engine-grid responsivo controlado pelo bloco v7 */
 
 .conteudos-feedback { text-align:center;font-size:12px;font-weight:700;margin-bottom:14px;min-height:18px; }
-.conteudos-toolbar { display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px;padding:16px 18px; }
+/* conteudos-toolbar base: controlado pelo bloco v7 — não redefinir aqui */
 .conteudos-toolbar-actions { display:flex;gap:8px;flex-wrap:wrap; }
 #conteudos-count { font-size:12px;font-weight:800;color:#f59e0b;letter-spacing:.04em; }
 .btn-secondary-lite, .btn-danger-lite { border-radius:10px;padding:10px 14px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);color:#d1d5db;font-size:11px;font-weight:800;letter-spacing:.04em;cursor:pointer; }
@@ -1699,6 +1610,659 @@ a,
 .btn-danger-lite:hover { background:rgba(239,68,68,.16); }
 .conteudo-select-wrap { display:inline-flex;align-items:center;gap:8px;font-size:11px;font-weight:700;color:#9ca3af;margin-bottom:8px; }
 .conteudo-select { accent-color:#f97316; }
-.account-form-grid { display:grid;grid-template-columns:120px 1fr auto;gap:10px;align-items:center;margin-bottom:12px; }
+.account-form-grid { display:grid;grid-template-columns:1fr;gap:10px;align-items:center;margin-bottom:12px; }
 .account-card .input-field { margin-bottom:0; }
-@media (max-width: 860px) { .account-form-grid { grid-template-columns:1fr; } .btn-secondary-lite,.btn-danger-lite{width:100%;} .status-header{flex-direction:column;align-items:flex-start;} }
+/* account-form-grid 3-col: ver bloco v7 (@media 769px) */
+
+/* ══════════════════════════════════════════════════════════════
+   RESPONSIVE SYSTEM v7 — Mobile-First
+   Breakpoints:
+     base   → até 480px  (celular pequeno)
+     sm     → 481px+     (celular grande)
+     md     → 769px+     (tablet / notebook)
+     lg     → 1025px+    (desktop)
+     xl     → 1280px+    (desktop grande)
+   ══════════════════════════════════════════════════════════════ */
+
+/* ── BASE GLOBAL ──────────────────────────────────────────── */
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+html,
+body {
+    max-width: 100%;
+    overflow-x: hidden;
+}
+
+img,
+video,
+iframe,
+svg {
+    max-width: 100%;
+    height: auto;
+}
+
+/* ── TIPOGRAFIA FLUIDA ────────────────────────────────────── */
+.title {
+    font-size: clamp(1.5rem, 5.5vw, 2rem);
+    word-break: break-word;
+}
+
+.subtitle {
+    font-size: clamp(0.8rem, 3vw, 0.875rem);
+}
+
+.logoEDIT {
+    font-size: clamp(1.25rem, 6vw, 1.75rem);
+    white-space: nowrap;
+}
+
+/* ── LAYOUT BASE (MOBILE) ─────────────────────────────────── */
+.main-container {
+    padding: 16px 16px 88px;
+    max-width: 1200px;
+    margin: 0 auto;
+    width: 100%;
+}
+
+/* ── HEADER BASE (MOBILE) ─────────────────────────────────── */
+.header {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 10px;
+    padding: 14px 16px;
+    width: 100%;
+    flex-wrap: nowrap;
+    position: relative;
+}
+
+.logo {
+    flex-shrink: 0;
+}
+
+/* No mobile: user info fica escondido (já controlado por media query abaixo) */
+.header-user {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-left: auto;
+    margin-right: 6px;
+    min-width: 0;
+    flex-shrink: 1;
+}
+
+.header-user-name {
+    font-size: 11px;
+    font-weight: 700;
+    color: #6b7280;
+    letter-spacing: 0.05em;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 120px;
+}
+
+/* Hamburger nav — base mobile */
+.btn-nav {
+    position: static;
+    margin-left: 0;
+    flex-shrink: 0;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    gap: 0;
+    width: fit-content;
+    padding: 8px;
+    border-radius: 999px;
+    background: rgba(0, 0, 0, .88);
+    border: 1px solid rgba(255, 255, 255, .08);
+    backdrop-filter: blur(10px);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, .35);
+    transition: all .35s ease;
+}
+
+.btn-nav.open {
+    gap: 10px;
+    padding: 10px 14px;
+}
+
+.nav-toggle {
+    width: 46px;
+    height: 46px;
+    border: 1px solid rgba(249, 115, 22, .35);
+    border-radius: 999px;
+    filter: drop-shadow(0 0 10px rgba(249, 115, 22, .4));
+    background: transparent;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform .3s ease, background .3s ease;
+    flex-shrink: 0;
+}
+
+/* Nav dropdown — mobile: painel fixo full-width */
+.nav-items {
+    position: fixed;
+    top: 70px;
+    right: 10px;
+    left: 10px;
+    width: auto;
+    max-width: none;
+    border: 1px solid rgba(255, 255, 255, .12);
+    background: rgba(8, 10, 13, .97);
+    backdrop-filter: blur(16px);
+    border-radius: 16px;
+    padding: 10px;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    z-index: 999;
+    /* Hidden state */
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(-10px);
+    transition: opacity .25s ease, transform .25s ease;
+}
+
+.btn-nav.open .nav-items {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateY(0);
+}
+
+.nav-item {
+    width: 100%;
+    justify-content: center;
+    display: inline-flex;
+    padding: 12px;
+    border-radius: 12px;
+    background: transparent;
+    border: 1px solid transparent;
+    color: #6b7280;
+    font-size: 12px;
+    font-weight: 800;
+    cursor: pointer;
+    /* show immediately when panel opens */
+    opacity: 1;
+    transform: none;
+    pointer-events: auto;
+    transition: color .2s ease, background .2s ease, border-color .2s ease;
+}
+
+/* ── GRIDS BASE (MOBILE: 1 coluna) ───────────────────────── */
+.tools-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 16px;
+}
+
+/* ── UPLOAD / STATUS BASE ─────────────────────────────────── */
+.upload-card {
+    min-height: 260px;
+    width: 100%;
+}
+
+.status-column {
+    display: grid;
+    grid-template-rows: auto auto;
+    gap: 16px;
+    height: auto;
+}
+
+/* ── META ROW BASE (1 coluna no mobile) ───────────────────── */
+.meta-row {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+}
+
+.meta-duration {
+    grid-column: 1 / -1;
+}
+
+/* ── CARDS ────────────────────────────────────────────────── */
+.tool-bentoCard {
+    padding: clamp(14px, 4vw, 28px);
+    width: 100%;
+}
+
+/* ── INPUTS ───────────────────────────────────────────────── */
+.input-field {
+    font-size: 16px; /* previne zoom no iOS */
+    width: 100%;
+}
+
+/* ── FERRAMENTAS EXTRAS BASE ──────────────────────────────── */
+#aba-ferramentas .tools-grid {
+    grid-template-columns: 1fr;
+}
+
+/* ── ENGINE GRID BASE ─────────────────────────────────────── */
+.engine-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 12px;
+}
+
+/* ── CONFIGS / PROFILE BASE ───────────────────────────────── */
+.engine-configs-layout {
+    max-width: 980px;
+    margin: 0 auto;
+    display: grid;
+    gap: 20px;
+}
+
+#aba-configs .tools-grid {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+}
+
+#aba-configs .tool-bentoCard {
+    width: 100%;
+    max-width: 600px;
+    align-self: center;
+}
+
+/* account-form: 1 coluna no mobile, 3 no desktop (já definido acima) */
+
+/* ── CONTEÚDOS TOOLBAR BASE ───────────────────────────────── */
+.conteudos-toolbar {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 14px 16px;
+}
+
+.conteudos-toolbar-left {
+    flex-shrink: 0;
+}
+
+.conteudos-toolbar-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    width: 100%;
+}
+
+.btn-secondary-lite,
+.btn-danger-lite {
+    flex: 1 1 calc(50% - 4px);
+    min-width: 0;
+    text-align: center;
+}
+
+/* ── RESULT BTNS BASE ─────────────────────────────────────── */
+.result-btns {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.result-btns .btn-assistir,
+.result-btns .btn-download,
+.result-btns .btn-excluir-corte,
+.btn-inline-result {
+    width: 100%;
+    flex: none;
+}
+
+/* ── CUT TIME BASE ────────────────────────────────────────── */
+.cut-time {
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.cut-value {
+    font-size: clamp(1.6rem, 7vw, 2.25rem);
+}
+
+/* ── CORTE ITEM ───────────────────────────────────────────── */
+.corte-item {
+    padding: 18px 16px;
+}
+
+.corte-item-header {
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+/* ── SECTION HEADER ───────────────────────────────────────── */
+.section-header {
+    text-align: center;
+    margin-bottom: 24px;
+}
+
+/* ── EMPTY STATE ──────────────────────────────────────────── */
+.empty-state {
+    padding: 32px 20px;
+}
+
+/* ══════════════════════════════════════════════════════════
+   SM — 481px+ (celular grande / tablet pequeno)
+   ══════════════════════════════════════════════════════════ */
+@media (min-width: 481px) {
+    .main-container {
+        padding: 18px 20px 96px;
+    }
+
+    .header {
+        padding: 16px 20px;
+    }
+
+    .upload-card {
+        min-height: 300px;
+    }
+
+    /* Nav dropdown menor e alinhado à direita */
+    .nav-items {
+        left: auto;
+        width: min(340px, calc(100vw - 20px));
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .btn-secondary-lite,
+    .btn-danger-lite {
+        flex: 1 1 auto;
+    }
+}
+
+/* ══════════════════════════════════════════════════════════
+   MD — 769px+ (tablet / notebook pequeno)
+   ══════════════════════════════════════════════════════════ */
+@media (min-width: 769px) {
+    .main-container {
+        padding: 20px 28px 112px;
+    }
+
+    /* Header volta a ser linha única */
+    .header {
+        padding: 20px 28px;
+        flex-wrap: nowrap;
+        gap: 12px;
+    }
+
+    .header-user {
+        margin-right: 8px;
+    }
+
+    .header-user-name {
+        max-width: 200px;
+        display: block !important;
+    }
+
+    .btn-logout-desktop {
+        display: flex !important;
+    }
+
+    /* Nav vira inline animada (painel horizontal) */
+    .nav-items {
+        position: static;
+        width: auto;
+        max-width: 0;
+        border: none;
+        background: transparent;
+        backdrop-filter: none;
+        padding: 0;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        border-radius: 0;
+        /* animação horizontal */
+        opacity: 0;
+        pointer-events: none;
+        transform: translateX(10px) scale(.98);
+        transition: max-width .45s cubic-bezier(.22, 1, .36, 1),
+                    opacity .25s ease,
+                    transform .3s ease;
+    }
+
+    .btn-nav.open .nav-items {
+        max-width: 700px;
+        opacity: 1;
+        pointer-events: auto;
+        transform: translateX(0) scale(1);
+    }
+
+    .nav-item {
+        width: auto;
+        padding: 10px 14px;
+        opacity: 0;
+        transform: translateY(8px);
+        pointer-events: none;
+        transition: color .3s ease, background .3s ease, border-color .3s ease,
+                    transform .3s ease, opacity .3s ease;
+    }
+
+    .btn-nav.open .nav-item { opacity: 1; transform: translateY(0); pointer-events: auto; }
+    .btn-nav.open .nav-item:nth-child(1) { transition-delay: .06s; }
+    .btn-nav.open .nav-item:nth-child(2) { transition-delay: .12s; }
+    .btn-nav.open .nav-item:nth-child(3) { transition-delay: .18s; }
+    .btn-nav.open .nav-item:nth-child(4) { transition-delay: .24s; }
+    .btn-nav.open .nav-item:nth-child(5) { transition-delay: .30s; }
+
+    /* 2 colunas upload/status */
+    .tools-grid {
+        gap: 24px;
+    }
+
+    /* Studio: 2 colunas */
+    #painel-upload.tools-grid {
+        grid-template-columns: 1.2fr 1fr;
+    }
+
+    .upload-card {
+        min-height: 360px;
+        height: 100%;
+    }
+
+    .status-column {
+        grid-template-rows: auto 1fr;
+        height: 360px;
+    }
+
+    /* Ferramentas: 2 colunas */
+    #aba-ferramentas .tools-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    /* Engine: 3 colunas */
+    .engine-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 16px;
+    }
+
+    /* Toolbar conteúdos horizontal */
+    .conteudos-toolbar {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+        padding: 16px 18px;
+    }
+
+    .conteudos-toolbar-actions {
+        width: auto;
+    }
+
+    .btn-secondary-lite,
+    .btn-danger-lite {
+        flex: 0 0 auto;
+        width: auto;
+    }
+
+    /* Result btns: horizontal */
+    .result-btns {
+        flex-direction: row;
+    }
+
+    .result-btns .btn-assistir,
+    .result-btns .btn-download,
+    .result-btns .btn-excluir-corte,
+    .btn-inline-result {
+        flex: 1 1 auto;
+        width: auto;
+    }
+
+    /* Profile form: 3 colunas */
+    .account-form-grid {
+        grid-template-columns: 120px 1fr auto;
+    }
+
+    #aba-configs .tools-grid {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .section-header {
+        margin-bottom: 32px;
+    }
+}
+
+/* ══════════════════════════════════════════════════════════
+   LG — 1025px+ (desktop)
+   ══════════════════════════════════════════════════════════ */
+@media (min-width: 1025px) {
+    .main-container {
+        padding: 24px 40px 120px;
+    }
+
+    .header {
+        padding: 24px 40px;
+    }
+
+    .header-user-name {
+        max-width: 240px;
+    }
+
+    .tools-grid {
+        gap: 28px;
+    }
+
+    .status-column {
+        height: 400px;
+    }
+
+    .upload-card {
+        min-height: 400px;
+    }
+
+    .section-header {
+        margin-bottom: 40px;
+    }
+
+    .corte-item {
+        padding: 24px;
+    }
+}
+
+/* ══════════════════════════════════════════════════════════
+   XL — 1280px+ (desktop grande)
+   ══════════════════════════════════════════════════════════ */
+@media (min-width: 1280px) {
+    .tools-grid {
+        gap: 32px;
+    }
+}
+
+/* ── UTILITÁRIOS ADICIONAIS ───────────────────────────────── */
+.profile-subtitle {
+    margin-top: 0;
+    margin-bottom: 16px;
+}
+
+.profile-feedback {
+    text-align: left;
+    margin-top: 10px;
+}
+
+/* Evita que botões de upload estourem no mobile */
+.btn-upload {
+    max-width: 100%;
+    white-space: nowrap;
+}
+
+/* Garante que selects não estourem */
+.select-field,
+select {
+    max-width: 100%;
+}
+
+/* Recorte config grid — 1 col mobile, 2 col 600px+ */
+.recorte-config-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 12px;
+}
+
+@media (min-width: 600px) {
+    .recorte-config-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+}
+
+/* Conteúdos grid: 1 col mobile → auto-fit desktop */
+#aba-conteudos .tools-grid {
+    grid-template-columns: 1fr;
+}
+
+@media (min-width: 600px) {
+    #aba-conteudos .tools-grid {
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    }
+}
+
+/* Video players nunca estouram */
+.video-result-player,
+.conteudo-video {
+    width: 100%;
+    max-width: 100%;
+    height: auto;
+    max-height: 460px;
+}
+
+/* Status header: empilha no mobile */
+@media (max-width: 480px) {
+    .status-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 6px;
+    }
+
+    .status-metrics {
+        gap: 8px;
+    }
+
+    .status-percentage {
+        font-size: 26px;
+    }
+}
+
+/* Painel IA */
+.painel-ia {
+    margin-top: 24px;
+    gap: 16px;
+}
+
+@media (min-width: 769px) {
+    .painel-ia {
+        margin-top: 40px;
+        gap: 24px;
+    }
+}
+
+/* Config card */
+.config-card {
+    margin-top: 16px;
+}
+
+@media (min-width: 769px) {
+    .config-card {
+        margin-top: 24px;
+    }
+}

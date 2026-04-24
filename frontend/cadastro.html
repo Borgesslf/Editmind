@@ -21,21 +21,25 @@
             box-shadow: 0 0 15px rgba(249, 115, 22, 0.3);
             border-color: #f97316;
         }
+        *, *::before, *::after { box-sizing: border-box; }
+        html, body { max-width: 100%; overflow-x: hidden; }
+        img, video { max-width: 100%; height: auto; }
+        .glass { min-width: 0; }
     </style>
 </head>
 
 <body class="bg-[#0b0d11] text-gray-100 min-h-screen flex flex-col">
 
-    <header class="w-full flex justify-between items-center px-6 md:px-12 py-8 z-20">
+    <header class="w-full flex flex-wrap gap-3 justify-between items-center px-4 sm:px-6 md:px-12 py-5 md:py-8 z-20">
         <a href="home.html" class="no-underline hover:scale-105 transition-transform inline-block">
-            <h1 class="text-3xl font-black italic tracking-tighter text-white">
+            <h1 class="text-2xl sm:text-3xl font-black italic tracking-tighter text-white">
                 EDIT<span class="text-[#f97316] drop-shadow-[0_0_15px_rgba(249,115,22,0.5)]">MIND</span>
             </h1>
         </a>
     </header>
 
-    <main class="flex-grow flex items-center justify-center px-6 pb-12">
-        <div class="w-full max-w-md">
+    <main class="flex-grow flex items-center justify-center px-4 sm:px-6 pb-12">
+        <div class="w-full max-w-md min-w-0">
             <div class="glass-panel border border-gray-800/50 rounded-[2rem] p-8 md:p-10 shadow-2xl">
 
                 <div class="mb-10 text-center">
@@ -65,7 +69,7 @@
                     </div>
 
                     <button type="submit" id="btn-cadastro"
-                        class="w-full bg-[#f97316] hover:bg-white hover:text-[#f97316] text-white font-black py-4 rounded-2xl text-xs uppercase tracking-[0.2em] transition-all shadow-[0_10px_25px_rgba(249,115,22,0.2)] active:scale-95">
+                        class="w-full bg-[#f97316] hover:bg-white hover:text-[#f97316] text-white font-black py-4 rounded-2xl text-xs uppercase tracking-[0.16em] sm:tracking-[0.2em] transition-all shadow-[0_10px_25px_rgba(249,115,22,0.2)] active:scale-95">
                         Criar Minha Conta
                     </button>
                 </form>

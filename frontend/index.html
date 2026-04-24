@@ -276,7 +276,7 @@
                 <h2 class="title">Ajustes da Engine e Conta</h2>
                 <p class="subtitle">Defina o preset de corte padrão e gerencie seus dados de acesso.</p>
             </div>
-            <div id="engine-configs" style="max-width:980px;margin:0 auto;display:grid;gap:20px;">
+            <div id="engine-configs" class="engine-configs-layout">
                 <div class="tool-bentoCard">
                     <div class="card-header highlight">
                         <span class="card-label">Preset padrão dos recortes</span>
@@ -304,7 +304,7 @@
                     <div class="card-header highlight">
                         <span class="card-label">Perfil do usuário</span>
                     </div>
-                    <p class="subtitle" style="margin-top:0;margin-bottom:16px;">Dados protegidos por token Bearer (Supabase Auth).</p>
+                    <p class="subtitle profile-subtitle">Dados protegidos por token Bearer (Supabase Auth).</p>
                     <form id="form-profile-nome" class="account-form-grid">
                         <label class="input-label" for="profile-nome">Nome</label>
                         <input id="profile-nome" class="input-field" type="text" maxlength="80" placeholder="Seu nome" />
@@ -320,7 +320,7 @@
                         <input id="profile-senha" class="input-field" type="password" minlength="6" placeholder="••••••••" />
                         <button type="submit" class="btn-secondary-lite">Atualizar senha</button>
                     </form>
-                    <p id="profile-feedback" class="conteudos-feedback" style="text-align:left;margin-top:10px;"></p>
+                    <p id="profile-feedback" class="conteudos-feedback profile-feedback"></p>
                 </div>
             </div>
         </section>

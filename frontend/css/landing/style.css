@@ -1,11 +1,13 @@
 /* ============================================================
-   EditMind — css/landing/style.css (Landing Page)
+   EditMind — css/landing/style.css
+   Mobile-First v7
    ============================================================ */
 
 body.landing {
     min-height: 100vh;
     display: flex;
     flex-direction: column;
+    overflow-x: hidden;
 }
 
 .landing .header {
@@ -13,43 +15,42 @@ body.landing {
 }
 
 /* ── MAIN ─────────────────────────────────────────────────── */
-
 .landing-main {
     flex: 1;
+    width: 100%;
     max-width: 900px;
     margin: 0 auto;
-    padding: 40px 24px 60px;
-    width: 100%;
+    padding: 24px 16px 48px;
 }
 
 /* ── HERO ─────────────────────────────────────────────────── */
-
 .landing-hero {
     text-align: center;
-    padding: 80px 0 100px;
+    padding: 40px 0 56px;
 }
 
 .landing-badge {
     display: inline-block;
-    font-size: 11px;
+    font-size: 10px;
     font-weight: 800;
     text-transform: uppercase;
     letter-spacing: 0.15em;
     color: #f97316;
-    margin-bottom: 28px;
-    padding: 8px 18px;
+    margin-bottom: 22px;
+    padding: 7px 16px;
     border: 1px solid rgba(249, 115, 22, 0.4);
     border-radius: 999px;
     background: rgba(249, 115, 22, 0.06);
 }
 
 .landing-title {
-    font-size: clamp(36px, 6vw, 56px);
+    font-size: clamp(2rem, 8vw, 3.5rem);
     font-weight: 900;
     color: white;
     line-height: 1.15;
-    margin-bottom: 24px;
+    margin-bottom: 20px;
     letter-spacing: -1px;
+    word-break: break-word;
 }
 
 .landing-title-accent {
@@ -57,27 +58,30 @@ body.landing {
 }
 
 .landing-lead {
-    font-size: 18px;
+    font-size: clamp(0.9rem, 3.5vw, 1.05rem);
     color: #9ca3af;
     line-height: 1.7;
     max-width: 540px;
-    margin: 0 auto 40px;
+    margin: 0 auto 32px;
+    padding: 0 4px;
 }
 
 /* ── CTA BUTTON ───────────────────────────────────────────── */
-
 .btn-landing-cta {
     display: inline-block;
-    padding: 18px 44px;
+    width: 100%;
+    max-width: 340px;
+    padding: 16px 32px;
     background: #f97316;
     color: white;
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 800;
     letter-spacing: 0.05em;
     text-decoration: none;
     border-radius: 999px;
     border: none;
     cursor: pointer;
+    text-align: center;
     transition: transform 0.2s ease, box-shadow 0.2s ease;
     box-shadow: 0 8px 32px rgba(249, 115, 22, 0.3);
 }
@@ -88,66 +92,61 @@ body.landing {
 }
 
 /* ── FEATURES ─────────────────────────────────────────────── */
-
 .landing-features {
-    padding: 40px 0 72px;
+    padding: 32px 0 56px;
 }
 
 .landing-section-title {
-    font-size: 11px;
+    font-size: 10px;
     font-weight: 800;
     text-transform: uppercase;
     letter-spacing: 0.15em;
     color: #4b5563;
     text-align: center;
-    margin-bottom: 40px;
+    margin-bottom: 28px;
 }
 
 .landing-feature-list {
     list-style: none;
     display: grid;
-    gap: 20px;
-}
-
-@media (min-width: 640px) {
-    .landing-feature-list {
-        grid-template-columns: repeat(3, 1fr);
-    }
+    grid-template-columns: 1fr;
+    gap: 16px;
 }
 
 .landing-feature-card {
     background: rgba(10, 10, 12, 0.7);
     border: 1px solid rgba(255, 255, 255, 0.06);
     border-radius: 20px;
-    padding: 28px;
+    padding: 22px 20px;
     backdrop-filter: blur(20px);
     transition: border-color 0.3s ease, transform 0.3s ease;
 }
 
 .landing-feature-card:hover {
     border-color: rgba(249, 115, 22, 0.4);
-    transform: translateY(-4px);
+    transform: translateY(-3px);
 }
 
 .landing-feature-num {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 36px;
-    height: 36px;
-    font-size: 14px;
+    width: 34px;
+    height: 34px;
+    font-size: 13px;
     font-weight: 900;
     color: #f97316;
     background: rgba(249, 115, 22, 0.12);
     border-radius: 10px;
-    margin-bottom: 18px;
+    margin-bottom: 14px;
+    flex-shrink: 0;
 }
 
 .landing-feature-title {
-    font-size: 17px;
+    font-size: 16px;
     font-weight: 800;
     color: white;
-    margin-bottom: 10px;
+    margin-bottom: 8px;
 }
 
 .landing-feature-desc {
@@ -157,37 +156,36 @@ body.landing {
 }
 
 /* ── CTA BLOCK ────────────────────────────────────────────── */
-
 .landing-cta-block {
     text-align: center;
-    padding: 64px 32px;
+    padding: 40px 20px;
     background: rgba(10, 10, 12, 0.6);
     border: 1px solid rgba(255, 255, 255, 0.06);
-    border-radius: 24px;
+    border-radius: 20px;
     backdrop-filter: blur(20px);
 }
 
 .landing-cta-title {
-    font-size: 32px;
+    font-size: clamp(1.4rem, 5vw, 2rem);
     font-weight: 900;
     color: white;
-    margin-bottom: 14px;
+    margin-bottom: 12px;
     letter-spacing: -0.5px;
+    word-break: break-word;
 }
 
 .landing-cta-desc {
-    font-size: 15px;
+    font-size: 14px;
     color: #6b7280;
-    margin-bottom: 28px;
+    margin-bottom: 24px;
     line-height: 1.6;
 }
 
 /* ── FOOTER ───────────────────────────────────────────────── */
-
 .landing-footer {
     flex-shrink: 0;
     text-align: center;
-    padding: 28px 24px;
+    padding: 24px 16px;
     border-top: 1px solid rgba(255, 255, 255, 0.05);
 }
 
@@ -197,26 +195,27 @@ body.landing {
     letter-spacing: 0.05em;
 }
 
-/* ── RESPONSIVO ───────────────────────────────────────────── */
+/* SM — 481px+ */
+@media (min-width: 481px) {
+    .landing-main { padding: 28px 24px 56px; }
+    .landing-hero { padding: 56px 0 72px; }
+    .btn-landing-cta { width: auto; }
+}
 
-@media (max-width: 640px) {
-    .landing-hero {
-        padding: 48px 0 64px;
-    }
+/* MD — 640px+ (features 3 colunas) */
+@media (min-width: 640px) {
+    .landing-main { padding: 32px 32px 64px; }
+    .landing-feature-list { grid-template-columns: repeat(3, 1fr); }
+    .landing-features { padding: 40px 0 64px; }
+    .landing-cta-block { padding: 56px 40px; }
+}
 
-    .landing-title {
-        font-size: 32px;
-    }
-
-    .landing-lead {
-        font-size: 16px;
-    }
-
-    .landing-cta-block {
-        padding: 40px 20px;
-    }
-
-    .landing-cta-title {
-        font-size: 24px;
-    }
+/* LG — 769px+ */
+@media (min-width: 769px) {
+    .landing-main { padding: 40px 24px 72px; }
+    .landing-hero { padding: 72px 0 96px; }
+    .landing-feature-card { padding: 28px; }
+    .landing-cta-block { padding: 64px 48px; }
+    .landing-features { padding: 40px 0 72px; }
+    .landing-footer { padding: 28px 24px; }
 }
