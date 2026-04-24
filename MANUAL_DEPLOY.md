@@ -2,6 +2,7 @@
 
 ## Supabase
 - [ ] Criar a tabela `public.cortes` rodando `supabase_cortes.sql`.
+- [ ] (Opcional recomendado) aplicar `supabase_full_audit_v5_2.sql` para criação/migração consolidada (cortes + profiles + policies + bucket).
 - [ ] Criar o bucket `cortes` em Storage e marcar como **Public**.
 - [ ] Em Storage > Policies, permitir `INSERT`/`UPDATE`/`DELETE` para `service_role` no bucket `cortes`.
 - [ ] Em Authentication > URL Configuration, definir `Site URL` como a URL final da Vercel.

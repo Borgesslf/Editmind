@@ -89,13 +89,15 @@ Esse SQL cria `profiles` com:
 4. Deploy da API (`main.py`).
 
 ### Frontend (Vercel)
-1. Publicar pasta `frontend`.
-2. Usar `vercel.json` do projeto.
-3. Confirmar rotas (`/`, `/app`, `/login`, `/cadastro`, `/esqueci`, `/redefinir`).
+1. Escolher um dos modos:
+   - **Root Directory `/`**: usar `vercel.json` na raiz (roteia para `/frontend/...`).
+   - **Root Directory `frontend/`**: usar `frontend/vercel.json`.
+2. Confirmar rotas (`/`, `/app`, `/login`, `/cadastro`, `/esqueci`, `/redefinir`).
 
 ### Supabase
 1. Criar bucket `cortes`.
-2. Aplicar SQL de `supabase_cortes.sql` e `supabase_profiles_v5_2.sql`.
+2. Aplicar SQL de `supabase_cortes.sql` e `supabase_profiles_v5_2.sql`
+   (ou usar o consolidado `supabase_full_audit_v5_2.sql`).
 3. Configurar Auth (email/password + reset).
 
 ## Limitações conhecidas

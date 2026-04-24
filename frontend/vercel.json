@@ -3,35 +3,35 @@
   "routes": [
     {
       "src": "^/$",
-      "dest": "/frontend/home.html"
+      "dest": "/home.html"
     },
     {
       "src": "^/app/?$",
-      "dest": "/frontend/index.html"
+      "dest": "/index.html"
     },
     {
       "src": "^/login/?$",
-      "dest": "/frontend/login.html"
+      "dest": "/login.html"
     },
     {
       "src": "^/cadastro/?$",
-      "dest": "/frontend/cadastro.html"
+      "dest": "/cadastro.html"
     },
     {
       "src": "^/esqueci/?$",
-      "dest": "/frontend/esqueci-senha.html"
+      "dest": "/esqueci-senha.html"
     },
     {
       "src": "^/redefinir/?$",
-      "dest": "/frontend/redefinir-senha.html"
+      "dest": "/redefinir-senha.html"
     },
     {
       "src": "^/(home|index|login|cadastro|esqueci-senha|redefinir-senha)\\.html$",
-      "dest": "/frontend/$1.html"
+      "dest": "/$1.html"
     },
     {
       "src": "^/(js|css|assets)/(.+)$",
-      "dest": "/frontend/$1/$2"
+      "dest": "/$1/$2"
     }
   ]
 }
