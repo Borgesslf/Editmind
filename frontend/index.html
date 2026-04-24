@@ -18,7 +18,8 @@
         <div class="header-user">
             <span id="user-nome" class="header-user-name"></span>
             <button type="button" id="btn-logout" class="btn-logout-desktop" title="Sair">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
                     <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
                     <polyline points="16 17 21 12 16 7" />
                     <line x1="21" y1="12" x2="9" y2="12" />
@@ -50,7 +51,8 @@
                 </button>
                 <button type="button" id="btn-logout-mobile" class="nav-item nav-item-logout" title="Sair">
                     <span>
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
                             <polyline points="16 17 21 12 16 7" />
                             <line x1="21" y1="12" x2="9" y2="12" />
@@ -74,8 +76,10 @@
                         <img src="assets/img/newVideo.svg" alt="upload" class="upload-icon">
                         <h3 class="upload-title">Arrastar mídia</h3>
                         <p class="upload-subtitle">Suporta MP4, MOV, AVI e WEBM. Limite seguro padrão: 3 minutos.</p>
-                        <input type="file" id="entrada-arquivo" class="hidden-input" accept="video/mp4,video/quicktime,video/avi,video/webm">
-                        <button type="button" onclick="document.getElementById('entrada-arquivo').click()" class="btn-upload">
+                        <input type="file" id="entrada-arquivo" class="hidden-input"
+                            accept="video/mp4,video/quicktime,video/avi,video/webm">
+                        <button type="button" onclick="document.getElementById('entrada-arquivo').click()"
+                            class="btn-upload">
                             Selecionar Arquivo
                         </button>
                         <a href="assets/video_teste_15s.mp4" download class="upload-link">
@@ -83,25 +87,7 @@
                         </a>
                     </div>
 
-                    <div class="tool-bentoCard config-card">
-                        <div class="card-header highlight">
-                            <span class="card-label">Configuração dos recortes</span>
-                        </div>
 
-                        <label class="input-label" for="quantidade-recortes">Quantidade de recortes</label>
-                        <select id="quantidade-recortes" class="input-field select-field">
-                            <option value="1">1 recorte</option>
-                            <option value="2">2 recortes</option>
-                            <option value="3">3 recortes</option>
-                        </select>
-
-                        <div id="recortes-config" class="recortes-config"></div>
-
-                        <label class="vertical-option">
-                            <input type="checkbox" id="formato-vertical">
-                            <span>Gerar em formato vertical 9:16 sem achatar</span>
-                        </label>
-                    </div>
                 </div>
 
                 <div class="status-column">
@@ -135,6 +121,26 @@
                         </div>
                     </div>
                 </div>
+            </div>
+
+            <div class="tool-bentoCard config-card">
+                <div class="card-header highlight">
+                    <span class="card-label">Configuração dos recortes</span>
+                </div>
+
+                <label class="input-label" for="quantidade-recortes">Quantidade de recortes</label>
+                <select id="quantidade-recortes" class="input-field select-field">
+                    <option value="1">1 recorte</option>
+                    <option value="2">2 recortes</option>
+                    <option value="3">3 recortes</option>
+                </select>
+
+                <div id="recortes-config" class="recortes-config"></div>
+
+                <label class="vertical-option">
+                    <input type="checkbox" id="formato-vertical">
+                    <span>Gerar em formato vertical 9:16 sem achatar</span>
+                </label>
             </div>
 
             <div id="painel-ia" class="painel-ia hidden">
@@ -172,7 +178,8 @@
                         <p id="corte-motivo">...</p>
                     </div>
                     <div id="area-download" class="cut-download multi-cuts-area"></div>
-                    <button type="button" onclick="resetarNovoCorte()" class="btn-secondary">Analisar Outro Vídeo</button>
+                    <button type="button" onclick="resetarNovoCorte()" class="btn-secondary">Analisar Outro
+                        Vídeo</button>
                 </div>
             </div>
         </section>
@@ -182,7 +189,8 @@
                 <h2 class="title">Meus Conteúdos</h2>
                 <p class="subtitle">Sua esteira de cortes aprovados.</p>
             </div>
-            <p id="conteudos-feedback" style="text-align:center;font-size:12px;font-weight:700;margin-bottom:14px;min-height:18px;"></p>
+            <p id="conteudos-feedback"
+                style="text-align:center;font-size:12px;font-weight:700;margin-bottom:14px;min-height:18px;"></p>
             <div id="conteudos-lista" class="tools-grid"></div>
             <template id="conteudos-empty-template">
                 <div class="tool-bentoCard empty-state">
