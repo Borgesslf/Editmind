@@ -1,5 +1,5 @@
 """
-EditMind API v5.1
+EditMind API v5.0
 =================
 Stack : FastAPI · OpenAI (Whisper-1 + GPT-4o) · FFmpeg · Supabase
 Deploy: Render (backend) + Vercel (frontend)
@@ -56,15 +56,8 @@ YTDLP_COOKIES_FILE = os.getenv("YTDLP_COOKIES_FILE", "").strip()
 YTDLP_EXTRACTOR_ARGS = os.getenv("YTDLP_EXTRACTOR_ARGS", "youtube:player_client=android,web")
 
 # Default seguro para Render Free. Para 30 minutos, configure MAX_DURACAO_S=1800 no Render.
-# Hard cap absoluto: 1800s. Isso evita liberar vídeos longos por erro de configuração.
-def _env_int(nome: str, padrao: int) -> int:
-    try:
-        return int(os.getenv(nome, str(padrao)))
-    except Exception:
-        return padrao
-
-MAX_DURACAO_S = max(10, min(_env_int("MAX_DURACAO_S", 180), 1800))
-MAX_BYTES = max(1 * 1024 * 1024, _env_int("MAX_BYTES", 200 * 1024 * 1024))
+MAX_DURACAO_S = int(os.getenv("MAX_DURACAO_S", "180"))
+MAX_BYTES = int(os.getenv("MAX_BYTES", str(200 * 1024 * 1024)))
 
 # ── Clientes ──────────────────────────────────────────────────
 openai_client = AsyncOpenAI(api_key=OPENAI_API_KEY) if OPENAI_API_KEY else None
@@ -110,7 +103,7 @@ FOCOS_VALIDOS = {
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    logger.info("🚀 EditMind v5.1 iniciada")
+    logger.info("🚀 EditMind v5.0 iniciada")
     logger.info(f"   OpenAI        : {'✅' if OPENAI_API_KEY else '❌'}")
     logger.info(f"   Supabase Auth : {'✅' if supabase else '❌'}")
     logger.info(f"   Supabase Admin: {'✅' if supabase_admin else '❌ (SUPABASE_SERVICE_KEY ausente)'}")
@@ -120,7 +113,7 @@ async def lifespan(app: FastAPI):
     logger.info("🛑 Encerrada")
 
 
-app = FastAPI(title="EditMind API", version="5.1.0", lifespan=lifespan)
+app = FastAPI(title="EditMind API", version="5.0.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -317,17 +310,11 @@ async def extrair_audio(video: str, audio: str) -> None:
 
 async def cortar_video(entrada: str, saida: str, inicio: float, fim: float, formato_vertical: bool = False) -> None:
     if formato_vertical:
-        # Vertical 9:16 sem achatamento: fundo borrado + vídeo principal preservando proporção.
-        # Isso evita o efeito de vídeo espremido/achatado em Reels/TikTok/Shorts.
-        filtro = (
-            "[0:v]scale=1080:1920:force_original_aspect_ratio=increase,"
-            "crop=1080:1920,boxblur=20:20[bg];"
-            "[0:v]scale=1080:1920:force_original_aspect_ratio=decrease[fg];"
-            "[bg][fg]overlay=(W-w)/2:(H-h)/2,setsar=1[out]"
-        )
+        # Vertical 9:16 sem achatamento: mantém proporção e adiciona padding.
+        filtro = "scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2,setsar=1"
         await _ffmpeg(
             "-y", "-ss", str(inicio), "-to", str(fim), "-i", entrada,
-            "-filter_complex", filtro, "-map", "[out]", "-map", "0:a?",
+            "-vf", filtro,
             "-c:v", "libx264", "-preset", "veryfast", "-crf", "23",
             "-c:a", "aac", "-b:a", "128k",
             "-movflags", "+faststart", saida
@@ -664,20 +651,14 @@ async def salvar_registro_corte(
         return None
 
     corte = corte or {}
-    inicio = corte.get("inicio")
-    fim = corte.get("fim")
-    duracao_segundos = round(float(fim) - float(inicio), 2) if inicio is not None and fim is not None else None
     payload = {
         "user_email": user_email,
         "video_url": video_url,
         "titulo": titulo,
-        "inicio_segundos": inicio,
-        "fim_segundos": fim,
-        "duracao_segundos": duracao_segundos,
+        "inicio_segundos": corte.get("inicio"),
+        "fim_segundos": corte.get("fim"),
         "foco": corte.get("foco"),
         "duracao_tipo": corte.get("duracao_tipo"),
-        "motivo": corte.get("motivo"),
-        "indice_corte": corte.get("index"),
         "formato_vertical": formato_vertical,
     }
     payload_limpo = {k: v for k, v in payload.items() if v is not None}
@@ -827,14 +808,7 @@ async def _salvar_cortes_do_resultado(usuario: dict, titulo_base: str, resultado
             user_email=user_email,
             video_url=corte.get("url_corte", ""),
             titulo=titulo,
-            corte={
-                "index": corte.get("index"),
-                "inicio": corte.get("inicio_segundos"),
-                "fim": corte.get("fim_segundos"),
-                "foco": corte.get("foco"),
-                "duracao_tipo": corte.get("duracao_tipo"),
-                "motivo": corte.get("motivo"),
-            },
+            corte={"inicio": corte.get("inicio_segundos"), "fim": corte.get("fim_segundos"), "foco": corte.get("foco"), "duracao_tipo": corte.get("duracao_tipo")},
             formato_vertical=bool(corte.get("formato_vertical")),
         )
         if registro and registro.get("id"):
@@ -1119,7 +1093,7 @@ async def health():
     return {
         "status": "online",
         "api": "EditMind",
-        "versao": "5.1.0",
+        "versao": "5.0.0",
         "servicos": {
             "openai": "ok" if OPENAI_API_KEY else "ausente",
             "supabase_auth": "ok" if supabase else "ausente",

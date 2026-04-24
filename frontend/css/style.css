@@ -1375,97 +1375,301 @@ button:hover, a:hover, .nav-item:hover, .engine-card:hover, .upload-card:hover {
     margin: 0;
 }
 
+/* ============================================================
+   EditMind v5.1 — visual consolidado solicitado
+   Mantém a base V5 e aplica a UI final de ferramentas, engine e cortes.
+   ============================================================ */
 
-/* ── V5.1 — CONFIGURAÇÃO DE RECORTES EM BOTÕES ───────────── */
-.num-cortes-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 14px;
-    flex-wrap: wrap;
-    margin-bottom: 16px;
-}
-
-.num-cortes-label,
-.config-row-label {
-    font-size: 10px;
-    font-weight: 900;
-    text-transform: uppercase;
-    letter-spacing: .12em;
-    color: #6b7280;
-}
-
-.num-cortes-btns,
-.preset-btns,
-.foco-btns {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
-}
-
-.btn-num-corte {
-    width: 38px;
-    height: 38px;
-    border-radius: 999px;
-    border: 1px solid #374151;
-    background: rgba(255,255,255,.03);
-    color: #9ca3af;
-    font-size: 13px;
-    font-weight: 900;
-    cursor: pointer;
-    transition: transform .2s ease, background .2s ease, border-color .2s ease, color .2s ease;
-}
-
-.btn-num-corte:hover,
-.btn-num-corte.active {
-    border-color: #f97316;
-    background: rgba(249,115,22,.15);
-    color: #f97316;
-}
-
-.config-row {
+body {
+    font-family: 'Inter', sans-serif;
+    /* Background unificado — igual ao fundo da landing page */
+    background: #0b0d11;
+    color: #e5e7eb;
+    min-height: 100vh;
     display: flex;
     flex-direction: column;
-    gap: 8px;
-    margin-top: 12px;
 }
 
-.btn-preset,
-.btn-foco {
-    padding: 7px 12px;
-    border-radius: 999px;
-    border: 1px solid #374151;
-    background: rgba(255,255,255,.025);
-    color: #9ca3af;
-    font-size: 11px;
-    font-weight: 800;
+/* Apenas elementos realmente clicáveis devem parecer clicáveis */
+.tool-bentoCard:not(.upload-card),
+.meta-card,
+.status-card,
+.transcription-card,
+.cut-card,
+.empty-state,
+.tool-card {
+    cursor: default;
+}
+
+button,
+a,
+.upload-card,
+.engine-card {
     cursor: pointer;
-    transition: transform .2s ease, background .2s ease, border-color .2s ease, color .2s ease;
-    white-space: nowrap;
 }
 
-.btn-preset:hover,
-.btn-foco:hover,
-.btn-preset.active,
-.btn-foco.active {
-    border-color: rgba(249,115,22,.65);
-    background: rgba(249,115,22,.12);
+/* ── MÚLTIPLOS CORTES ─────────────────────────────────────── */
+.cortes-lista {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    margin-top: 16px;
+}
+
+.corte-item {
+    background: rgba(0, 0, 0, .4);
+    border: 1px solid rgba(255, 255, 255, .08);
+    border-radius: 14px;
+    padding: 24px;
+}
+
+.corte-item-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+}
+
+.corte-badge {
+    font-size: 10px;
+    font-weight: 900;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    padding: 4px 12px;
+    border-radius: 999px;
+    background: rgba(249, 115, 22, .15);
+    border: 1px solid rgba(249, 115, 22, .3);
     color: #f97316;
 }
 
-.recorte-config-item {
-    background: rgba(255,255,255,.03);
+.corte-foco-badge {
+    font-size: 10px;
+    font-weight: 700;
+    padding: 3px 10px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, .06);
+    color: #9ca3af;
+    text-transform: capitalize;
 }
 
-@media (min-width: 760px) {
-    .config-row {
-        flex-direction: row;
-        align-items: flex-start;
-    }
-    .config-row-label {
-        width: 82px;
-        padding-top: 8px;
-        flex-shrink: 0;
+.corte-dur-badge {
+    font-size: 10px;
+    font-weight: 700;
+    padding: 3px 10px;
+    border-radius: 999px;
+    background: rgba(34, 197, 94, .08);
+    color: #22c55e;
+}
+
+.corte-vertical-badge {
+    font-size: 10px;
+    font-weight: 700;
+    padding: 3px 10px;
+    border-radius: 999px;
+    background: rgba(139, 92, 246, .1);
+    color: #a78bfa;
+}
+
+/* ── FERRAMENTAS — BOTÕES YT / TT ─────────────────────────── */
+.btn-plataforma {
+    width: 100%;
+    padding: 12px;
+    border-radius: 10px;
+    font-weight: 800;
+    font-size: 12px;
+    letter-spacing: .06em;
+    cursor: pointer;
+    transition: background .2s, color .2s, border-color .2s, box-shadow .2s;
+    border: 1px solid transparent;
+}
+
+/* YouTube = vermelho */
+.btn-yt-processar {
+    background: #dc2626;
+    color: white;
+    border-color: #dc2626;
+    box-shadow: 0 4px 16px rgba(220, 38, 38, .3);
+}
+
+.btn-yt-processar:hover:not(:disabled) {
+    background: #b91c1c;
+    box-shadow: 0 6px 20px rgba(220, 38, 38, .5);
+}
+
+/* TikTok = branco */
+.btn-tt-processar {
+    background: white;
+    color: #111;
+    border-color: white;
+    box-shadow: 0 4px 16px rgba(255, 255, 255, .12);
+}
+
+.btn-tt-processar:hover:not(:disabled) {
+    background: #e5e7eb;
+    box-shadow: 0 6px 20px rgba(255, 255, 255, .2);
+}
+
+/* Baixar = genérico secundário */
+.btn-baixar-link {
+    background: rgba(255, 255, 255, .04);
+    color: #9ca3af;
+    border-color: #374151;
+}
+
+.btn-baixar-link:hover:not(:disabled) {
+    background: #374151;
+    color: white;
+    border-color: #4b5563;
+}
+
+.btn-plataforma:disabled {
+    background: #1f2937;
+    color: #4b5563;
+    cursor: not-allowed;
+    box-shadow: none;
+}
+
+.tt-icon {
+    width: 38px;
+    height: 38px;
+    flex-shrink: 0;
+    filter: drop-shadow(0 0 14px rgba(255,255,255,.12));
+}
+
+/* ── BOTÕES GERAIS ────────────────────────────────────────── */
+.btn-upload {
+    background: #f97316;
+    color: white;
+    padding: 12px 30px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: .05em;
+    border: none;
+    cursor: pointer;
+    transition: transform .2s ease, box-shadow .2s ease;
+}
+
+.btn-upload:hover {
+    transform: scale(1.05);
+    box-shadow: 0 8px 24px rgba(249, 115, 22, .4);
+}
+
+.btn-secondary {
+    margin-top: 20px;
+    width: 100%;
+    padding: 14px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, .04);
+    border: 1px solid rgba(255, 255, 255, .1);
+    color: #9ca3af;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background .2s ease, color .2s ease;
+}
+
+.btn-secondary:hover {
+    background: rgba(255, 255, 255, .08);
+    color: white;
+}
+
+.btn-voltaInicio {
+    width: 100%;
+    padding: 14px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, .05);
+    border: 1px solid #374151;
+    color: #d1d5db;
+    font-weight: 800;
+    cursor: pointer;
+    transition: background .2s ease, color .2s ease;
+    margin-top: 20px;
+}
+
+.btn-voltaInicio:hover {
+    background: #f97316;
+    color: white;
+    border-color: #f97316;
+}
+
+/* ── ENGINE CARDS v5.1 ────────────────────────────────────── */
+.engine-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+}
+
+.engine-card {
+    background: rgba(0, 0, 0, .5);
+    border: 2px solid rgba(255, 255, 255, .08);
+    border-radius: 20px;
+    padding: 28px 24px;
+    cursor: pointer;
+    transition: border-color .25s ease, background .25s ease;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    position: relative;
+    min-height: auto;
+    color: inherit;
+    text-align: left;
+}
+
+.engine-card:hover {
+    border-color: rgba(249, 115, 22, .4);
+    background: rgba(249, 115, 22, .04);
+}
+
+.engine-card.selected,
+.engine-card.active {
+    border-color: #f97316;
+    background: rgba(249, 115, 22, .08);
+}
+
+.engine-card.selected::after,
+.engine-card.active::after {
+    content: '✓';
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    width: 22px;
+    height: 22px;
+    background: #f97316;
+    color: white;
+    border-radius: 50%;
+    font-size: 11px;
+    font-weight: 900;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.engine-label {
+    font-size: 28px;
+    font-weight: 900;
+    color: white;
+    letter-spacing: -1px;
+}
+
+.engine-name {
+    font-size: 12px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .12em;
+    color: #f97316;
+}
+
+.engine-desc {
+    font-size: 12px;
+    color: #6b7280;
+    line-height: 1.5;
+}
+
+@media(max-width:700px) {
+    .engine-grid {
+        grid-template-columns: 1fr;
+        gap: 12px;
     }
 }

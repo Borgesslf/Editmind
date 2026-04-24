@@ -300,8 +300,3 @@ MAX_DURACAO_S=1800
 ```
 
 Use isso apenas em plano com recursos suficientes. No Render Free, mantenha o default seguro.
-
-
-## EditMind V5.1
-
-A V5.1 consolida a V5 com melhorias de UX nos múltiplos recortes, formato 9:16 com fundo borrado e metadados adicionais no histórico. Consulte `CHANGELOG_V5_1.md`.

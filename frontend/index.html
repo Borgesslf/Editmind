@@ -88,20 +88,18 @@
                             <span class="card-label">Configuração dos recortes</span>
                         </div>
 
-                        <div class="num-cortes-row" aria-label="Quantidade de recortes">
-                            <span class="num-cortes-label">Recortes</span>
-                            <div class="num-cortes-btns">
-                                <button type="button" class="btn-num-corte active" data-n="1">1</button>
-                                <button type="button" class="btn-num-corte" data-n="2">2</button>
-                                <button type="button" class="btn-num-corte" data-n="3">3</button>
-                            </div>
-                        </div>
+                        <label class="input-label" for="quantidade-recortes">Quantidade de recortes</label>
+                        <select id="quantidade-recortes" class="input-field select-field">
+                            <option value="1">1 recorte</option>
+                            <option value="2">2 recortes</option>
+                            <option value="3">3 recortes</option>
+                        </select>
 
                         <div id="recortes-config" class="recortes-config"></div>
 
                         <label class="vertical-option">
                             <input type="checkbox" id="formato-vertical">
-                            <span>Gerar em formato vertical 9:16 com fundo borrado, sem achatar</span>
+                            <span>Gerar em formato vertical 9:16 sem achatar</span>
                         </label>
                     </div>
                 </div>
@@ -203,63 +201,90 @@
             </div>
 
             <div class="tools-grid link-tools-grid">
+                <!-- YouTube Clipper -->
                 <div class="tool-bentoCard tool-card">
                     <div class="tool-header">
-                        <img src="assets/img/youtubeLogo.svg" alt="YouTube" class="yt-icon">
+                        <img src="assets/img/youtubeLogo.svg" alt="YT" class="yt-icon">
                         <div>
                             <h3 class="tool-title">YouTube Clipper</h3>
-                            <p class="tool-description">Cole o link para processar ou baixar.</p>
+                            <p class="tool-description">Cole o link — a IA recorta o melhor trecho</p>
                         </div>
                     </div>
-                    <label class="input-label">URL do YouTube</label>
-                    <input type="url" id="input-youtube" class="input-field" placeholder="https://youtube.com/watch?v=..." autocomplete="off">
-                    <button id="btn-yt-processar" type="button" onclick="processarYouTube()" class="btn-yt btn-youtube-red">Processar</button>
-                    <button id="btn-yt-baixar" type="button" onclick="baixarYouTube()" class="btn-yt btn-yt-secondary">Baixar MP4</button>
+                    <label class="input-label">URL do Vídeo</label>
+                    <input type="url" id="input-youtube" class="input-field"
+                        placeholder="https://youtube.com/watch?v=..." autocomplete="off">
+                    <button id="btn-yt-processar" onclick="processarLink('youtube')"
+                        class="btn-plataforma btn-yt-processar">
+                        Processar
+                    </button>
+                    <div class="yt-divider">ou</div>
+                    <button id="btn-yt-baixar" onclick="baixarLink('youtube')" class="btn-plataforma btn-baixar-link">
+                        Baixar (MP4)
+                    </button>
                 </div>
 
+                <!-- TikTok Clipper -->
                 <div class="tool-bentoCard tool-card">
                     <div class="tool-header">
-                        <div class="tiktok-mark">♪</div>
+                        <!-- TikTok SVG inline -->
+                        <svg class="tt-icon" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <rect width="48" height="48" rx="12" fill="#010101" />
+                            <path
+                                d="M34.2 19.4a10.8 10.8 0 0 1-6.3-2V27a8.2 8.2 0 1 1-8.2-8.2c.3 0 .6 0 .9.02v4.56a3.8 3.8 0 1 0 2.66 3.62V10h4.42a6.42 6.42 0 0 0 6.54 6.01v3.39z"
+                                fill="white" />
+                        </svg>
                         <div>
                             <h3 class="tool-title">TikTok Clipper</h3>
-                            <p class="tool-description">Cole o link para processar ou baixar.</p>
+                            <p class="tool-description">Cole o link do TikTok — a IA recorta o trecho viral</p>
                         </div>
                     </div>
-                    <label class="input-label">URL do TikTok</label>
-                    <input type="url" id="input-tiktok" class="input-field" placeholder="https://www.tiktok.com/@perfil/video/..." autocomplete="off">
-                    <button id="btn-tt-processar" type="button" onclick="processarTikTok()" class="btn-yt btn-tiktok-white">Processar</button>
-                    <button id="btn-tt-baixar" type="button" onclick="baixarTikTok()" class="btn-yt btn-yt-secondary">Baixar MP4</button>
+                    <label class="input-label">URL do Vídeo</label>
+                    <input type="url" id="input-tiktok" class="input-field"
+                        placeholder="https://tiktok.com/@user/video/..." autocomplete="off">
+                    <button id="btn-tt-processar" onclick="processarLink('tiktok')"
+                        class="btn-plataforma btn-tt-processar">
+                        Processar
+                    </button>
+                    <div class="yt-divider">ou</div>
+                    <button id="btn-tt-baixar" onclick="baixarLink('tiktok')" class="btn-plataforma btn-baixar-link">
+                        Baixar (MP4)
+                    </button>
                 </div>
             </div>
         </section>
 
         <section id="aba-configs" class="section">
             <div class="section-header">
-                <h2 class="title">Parâmetros de Extração</h2>
-                <p class="subtitle">Calibre o algoritmo da IA.</p>
+                <h2 class="title">Ajustes da Engine</h2>
+                <p class="subtitle">Defina o preset de corte padrão ao fazer upload direto.</p>
             </div>
-            <div class="tool-bentoCard engine-panel">
-                <span class="status-label config-label">Duração alvo do corte</span>
-                <div class="engine-options" data-engine-options>
-                    <button type="button" class="engine-card" data-duration="curto">
-                        <strong>&lt; 30s</strong>
-                        <small>Dinâmico</small>
-                        <span>Alta retenção e loop rápido. Mínimo de 10 segundos.</span>
-                    </button>
-                    <button type="button" class="engine-card active" data-duration="medio">
-                        <strong>30s - 60s</strong>
-                        <small>Padrão viral</small>
-                        <span>Formato equilibrado para Shorts, Reels e TikTok.</span>
-                    </button>
-                    <button type="button" class="engine-card" data-duration="longo">
-                        <strong>&gt; 60s</strong>
-                        <small>Profundo</small>
-                        <span>Narrativa longa com limite máximo de 90 segundos.</span>
-                    </button>
+            <div id="engine-configs" style="max-width:860px;margin:0 auto;">
+                <div class="engine-grid">
+
+                    <div class="engine-card" data-preset="<30s" onclick="selecionarEnginePreset(this)">
+                        <div class="engine-label">&lt; 30s</div>
+                        <div class="engine-name">Vídeo Rápido</div>
+                        <div class="engine-desc">Alta retenção e loop rápido. Cortes de 10 a 29 segundos, perfeitos para
+                            TikTok e Reels.</div>
+                    </div>
+
+                    <div class="engine-card selected" data-preset="30s-60s" onclick="selecionarEnginePreset(this)">
+                        <div class="engine-label">30s – 60s</div>
+                        <div class="engine-name">Corte Padrão</div>
+                        <div class="engine-desc">Formato equilibrado para Shorts, Reels e TikTok. Tempo ideal para
+                            narrativa e engajamento.</div>
+                    </div>
+
+                    <div class="engine-card" data-preset=">60s" onclick="selecionarEnginePreset(this)">
+                        <div class="engine-label">&gt; 60s</div>
+                        <div class="engine-name">Corte Profundo</div>
+                        <div class="engine-desc">Para narrativa longa e contexto. Cortes de 61 a 90 segundos com
+                            profundidade de conteúdo.</div>
+                    </div>
                 </div>
-                <div class="engine-hint">Ao selecionar uma duração, os recortes configurados no Novo Projeto serão atualizados.</div>
             </div>
         </section>
+
     </main>
 
     <script src="./js/config.js"></script>

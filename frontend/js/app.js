@@ -1,5 +1,5 @@
 /* ============================================================
-   EditMind — js/app.js  v5.1
+   EditMind — js/app.js  v5.0
    - Múltiplos recortes com foco/duração
    - YouTube + TikTok via endpoints genéricos
    - Download real via backend
@@ -47,8 +47,19 @@ const DURACOES = [
     { value: 'longo', label: '> 60s' },
 ];
 
+const PRESET_PARA_DURACAO = {
+    '<30s': 'curto',
+    '30s-60s': 'medio',
+    '>60s': 'longo',
+};
+
+const DURACAO_PARA_PRESET = {
+    curto: '<30s',
+    medio: '30s-60s',
+    longo: '>60s',
+};
+
 let engineDuracaoPadrao = 'medio';
-let quantidadeRecortesAtual = 1;
 let _iv = null;
 let _t0 = null;
 
@@ -78,31 +89,36 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    quantidadeRecortes?.addEventListener('change', () => {
-        quantidadeRecortesAtual = getQuantidadeRecortes();
-        renderRecortesConfig();
-    });
-
-    document.querySelectorAll('.btn-num-corte[data-n]').forEach(btn => {
-        btn.addEventListener('click', () => {
-            document.querySelectorAll('.btn-num-corte[data-n]').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-            quantidadeRecortesAtual = getQuantidadeRecortes();
-            renderRecortesConfig();
-        });
-    });
-
+    quantidadeRecortes?.addEventListener('change', renderRecortesConfig);
     renderRecortesConfig();
 
-    document.querySelectorAll('.engine-card[data-duration]').forEach(card => {
-        card.addEventListener('click', () => {
-            engineDuracaoPadrao = card.getAttribute('data-duration') || 'medio';
-            document.querySelectorAll('.engine-card[data-duration]').forEach(c => c.classList.remove('active'));
-            card.classList.add('active');
-            aplicarPresetDuracaoEmTodos(engineDuracaoPadrao);
-        });
+    document.querySelectorAll('.engine-card[data-duration], .engine-card[data-preset]').forEach(card => {
+        card.addEventListener('click', () => selecionarEnginePreset(card));
     });
 });
+
+// ── ENGINE PRESETS ───────────────────────────────────────────
+function normalizarPresetEngine(valor) {
+    if (!valor) return 'medio';
+    const v = String(valor).trim();
+    if (PRESET_PARA_DURACAO[v]) return PRESET_PARA_DURACAO[v];
+    return ['curto', 'medio', 'longo'].includes(v) ? v : 'medio';
+}
+
+window.selecionarEnginePreset = function (card) {
+    if (!card) return;
+    const valor = card.getAttribute('data-preset') || card.getAttribute('data-duration') || 'medio';
+    engineDuracaoPadrao = normalizarPresetEngine(valor);
+
+    document.querySelectorAll('.engine-card[data-duration], .engine-card[data-preset]').forEach(c => {
+        c.classList.remove('active', 'selected');
+    });
+    card.classList.add('selected', 'active');
+
+    document.querySelectorAll('.recorte-duracao').forEach(select => {
+        select.value = engineDuracaoPadrao;
+    });
+};
 
 // ── AUTH HELPERS ─────────────────────────────────────────────
 function getAuthToken() {
@@ -118,89 +134,41 @@ function getAuthHeaders(extra = {}) {
 }
 
 // ── CONFIGURAÇÃO DE RECORTES ─────────────────────────────────
-function clampQuantidade(n) {
-    return Math.max(1, Math.min(3, Number(n || 1)));
-}
-
-function getQuantidadeRecortes() {
-    const ativo = document.querySelector('.btn-num-corte.active[data-n]');
-    if (ativo) return clampQuantidade(ativo.getAttribute('data-n'));
-    if (quantidadeRecortes) return clampQuantidade(quantidadeRecortes.value);
-    return clampQuantidade(quantidadeRecortesAtual);
-}
-
-function setActiveButtonInGroup(btn, selector) {
-    const grupo = btn.closest('.config-row') || btn.parentElement;
-    grupo?.querySelectorAll(selector).forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-}
-
-function aplicarPresetDuracaoEmTodos(valor) {
-    document.querySelectorAll('.btn-preset[data-value]').forEach(btn => {
-        btn.classList.toggle('active', btn.getAttribute('data-value') === valor);
-    });
-    document.querySelectorAll('.recorte-duracao').forEach(select => {
-        select.value = valor;
-    });
-}
-
 function renderRecortesConfig() {
     if (!recortesConfig) return;
-    const qtd = getQuantidadeRecortes();
-    quantidadeRecortesAtual = qtd;
-    if (quantidadeRecortes) quantidadeRecortes.value = String(qtd);
-
+    const qtd = Math.max(1, Math.min(3, Number(quantidadeRecortes?.value || 1)));
     const html = Array.from({ length: qtd }, (_, i) => {
         const n = i + 1;
         return `
             <div class="recorte-config-item" data-recorte-index="${n}">
                 <div class="recorte-config-title">Recorte ${n}</div>
-
-                <div class="config-row">
-                    <span class="config-row-label">Duração</span>
-                    <div class="preset-btns" role="group" aria-label="Duração do recorte ${n}">
-                        ${DURACOES.map(d => `
-                            <button type="button"
-                                class="btn-preset ${d.value === engineDuracaoPadrao ? 'active' : ''}"
-                                data-recorte-duration="${n}"
-                                data-value="${d.value}">${d.label}</button>
-                        `).join('')}
+                <div class="recorte-config-grid">
+                    <div>
+                        <label class="input-label">Duração</label>
+                        <select class="input-field select-field recorte-duracao" data-recorte-duration="${n}">
+                            ${DURACOES.map(d => `<option value="${d.value}" ${d.value === engineDuracaoPadrao ? 'selected' : ''}>${d.label}</option>`).join('')}
+                        </select>
                     </div>
-                </div>
-
-                <div class="config-row">
-                    <span class="config-row-label">Foco</span>
-                    <div class="foco-btns" role="group" aria-label="Foco do gancho ${n}">
-                        ${FOCOS.map((f, idx) => `
-                            <button type="button"
-                                class="btn-foco ${idx === 0 ? 'active' : ''}"
-                                data-recorte-focus="${n}"
-                                data-value="${f}">${f}</button>
-                        `).join('')}
+                    <div>
+                        <label class="input-label">Foco do Gancho</label>
+                        <select class="input-field select-field recorte-foco" data-recorte-focus="${n}">
+                            ${FOCOS.map(f => `<option value="${f}">${f}</option>`).join('')}
+                        </select>
                     </div>
                 </div>
             </div>
         `;
     }).join('');
     recortesConfig.innerHTML = html;
-
-    recortesConfig.querySelectorAll('.btn-preset').forEach(btn => {
-        btn.addEventListener('click', () => setActiveButtonInGroup(btn, '.btn-preset'));
-    });
-    recortesConfig.querySelectorAll('.btn-foco').forEach(btn => {
-        btn.addEventListener('click', () => setActiveButtonInGroup(btn, '.btn-foco'));
-    });
 }
 
 function coletarConfigProcessamento() {
-    const qtd = getQuantidadeRecortes();
+    const qtd = Math.max(1, Math.min(3, Number(quantidadeRecortes?.value || 1)));
     const cortes = [];
     for (let i = 1; i <= qtd; i++) {
-        const duracaoBtn = document.querySelector(`.btn-preset.active[data-recorte-duration="${i}"]`);
-        const focoBtn = document.querySelector(`.btn-foco.active[data-recorte-focus="${i}"]`);
         cortes.push({
-            duracao_tipo: duracaoBtn?.getAttribute('data-value') || document.querySelector(`[data-recorte-duration="${i}"]`)?.value || engineDuracaoPadrao,
-            foco: focoBtn?.getAttribute('data-value') || document.querySelector(`[data-recorte-focus="${i}"]`)?.value || 'Livre',
+            duracao_tipo: document.querySelector(`[data-recorte-duration="${i}"]`)?.value || engineDuracaoPadrao,
+            foco: document.querySelector(`[data-recorte-focus="${i}"]`)?.value || 'Livre',
         });
     }
     return {
@@ -365,6 +333,13 @@ async function processarLinkGenerico(inputId, btnId, nomeFonte) {
 window.processarYouTube = () => processarLinkGenerico('input-youtube', 'btn-yt-processar', 'YouTube');
 window.processarTikTok = () => processarLinkGenerico('input-tiktok', 'btn-tt-processar', 'TikTok');
 
+window.processarLink = function (plataforma) {
+    const p = String(plataforma || '').toLowerCase();
+    if (p === 'youtube') return window.processarYouTube();
+    if (p === 'tiktok') return window.processarTikTok();
+    alert('Plataforma não suportada.');
+};
+
 async function baixarLinkGenerico(inputId, btnId, nomeArquivo = 'Video_EditMind.mp4') {
     const input = $(inputId);
     const btn = $(btnId);
@@ -399,6 +374,13 @@ async function baixarLinkGenerico(inputId, btnId, nomeArquivo = 'Video_EditMind.
 
 window.baixarYouTube = () => baixarLinkGenerico('input-youtube', 'btn-yt-baixar', 'Video_YouTube_EditMind.mp4');
 window.baixarTikTok = () => baixarLinkGenerico('input-tiktok', 'btn-tt-baixar', 'Video_TikTok_EditMind.mp4');
+
+window.baixarLink = function (plataforma) {
+    const p = String(plataforma || '').toLowerCase();
+    if (p === 'youtube') return window.baixarYouTube();
+    if (p === 'tiktok') return window.baixarTikTok();
+    alert('Plataforma não suportada.');
+};
 
 // ── EXECUTOR GENÉRICO ─────────────────────────────────────────
 async function _executar(fetchFn) {
@@ -601,14 +583,12 @@ function renderConteudos(cortes) {
         const corteId = escaparHtml(corte.id || '');
         const foco = escaparHtml(corte.foco || 'Livre');
         const duracaoTipo = escaparHtml(duracaoLabel(corte.duracao_tipo));
-        const duracaoReal = corte.duracao_segundos || corte.duracao_s;
-        const duracaoTexto = duracaoReal ? `${duracaoTipo} · ${Number(duracaoReal).toFixed(1)}s` : duracaoTipo;
         return `
             <article class="tool-bentoCard conteudo-card" data-corte-id="${corteId}">
                 <video src="${urlVideo}" controls preload="metadata" class="conteudo-video"></video>
                 <h3 class="tool-title conteudo-title">${titulo}</h3>
                 <p class="tool-description conteudo-date">Criado em: ${dataFmt}</p>
-                <p class="conteudo-tags">Foco: <b>${foco}</b> · Duração: <b>${escaparHtml(duracaoTexto)}</b></p>
+                <p class="conteudo-tags">Foco: <b>${foco}</b> · Duração: <b>${duracaoTipo}</b></p>
                 <div class="result-btns">
                     <a href="${urlVideo}" target="_blank" rel="noopener noreferrer" class="btn-assistir">Abrir vídeo</a>
                     <button type="button" class="btn-download btn-download-video" data-url="${urlVideo}">Baixar</button>
