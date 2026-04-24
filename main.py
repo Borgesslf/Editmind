@@ -57,7 +57,7 @@ YTDLP_COOKIES_FILE = os.getenv("YTDLP_COOKIES_FILE", "").strip()
 YTDLP_EXTRACTOR_ARGS = os.getenv("YTDLP_EXTRACTOR_ARGS", "youtube:player_client=android,web")
 
 # Default seguro para Render Free. Para 30 minutos, configure MAX_DURACAO_S=1800 no Render.
-MAX_DURACAO_S = int(os.getenv("MAX_DURACAO_S", "660"))
+MAX_DURACAO_S = int(os.getenv("MAX_DURACAO_S", "180"))
 MAX_BYTES = int(os.getenv("MAX_BYTES", str(200 * 1024 * 1024)))
 
 # ── Clientes ──────────────────────────────────────────────────
@@ -138,17 +138,50 @@ _CORS_ORIGINS: list[str] = (
 # Garante que SITE_URL está sempre na lista (sem duplicatas)
 if SITE_URL and SITE_URL not in _CORS_ORIGINS:
     _CORS_ORIGINS.append(SITE_URL)
+# Remove entradas vazias ou inválidas
+_CORS_ORIGINS = [o for o in _CORS_ORIGINS if o and o.startswith("http")]
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_CORS_ORIGINS,
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allow_headers=["Authorization", "Content-Type", "Accept", "X-Requested-With"],
+    # PATCH é necessário para /api/user/profile/name|email|password
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=[
+        "Authorization",
+        "Content-Type",
+        "Accept",
+        "Accept-Encoding",
+        "X-Requested-With",
+        "Origin",
+        "Cache-Control",
+    ],
     expose_headers=["Content-Disposition"],
+    max_age=600,  # cache preflight por 10 min
 )
 
 app.mount("/outputs", StaticFiles(directory="outputs"), name="outputs")
+
+
+# ── PREFLIGHT HANDLER EXPLÍCITO ───────────────────────────────
+# Garante que QUALQUER rota responde 200 a OPTIONS (preflight CORS).
+# O CORSMiddleware já deveria tratar isso, mas em alguns deploys no Render
+# o middleware não intercepta antes do roteador — este handler cobre o caso.
+from fastapi import Request
+from fastapi.responses import Response
+
+@app.options("/{rest_of_path:path}")
+async def options_handler(rest_of_path: str, request: Request):
+    origin = request.headers.get("origin", "")
+    allowed = origin in _CORS_ORIGINS
+    headers = {
+        "Access-Control-Allow-Origin": origin if allowed else "",
+        "Access-Control-Allow-Methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
+        "Access-Control-Allow-Headers": "Authorization, Content-Type, Accept, Accept-Encoding, X-Requested-With, Origin, Cache-Control",
+        "Access-Control-Allow-Credentials": "true",
+        "Access-Control-Max-Age": "600",
+    }
+    return Response(status_code=200, headers=headers)
 
 
 # ══════════════════════════════════════════════════════════════
