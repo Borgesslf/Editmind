@@ -22,6 +22,7 @@ import asyncio
 import tempfile
 import shutil
 import logging
+import zipfile
 from pathlib import Path
 from contextlib import asynccontextmanager
 from typing import Optional, Any
@@ -103,7 +104,7 @@ FOCOS_VALIDOS = {
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    logger.info("🚀 EditMind v5.0 iniciada")
+    logger.info("🚀 EditMind v5.2 iniciada")
     logger.info(f"   OpenAI        : {'✅' if OPENAI_API_KEY else '❌'}")
     logger.info(f"   Supabase Auth : {'✅' if supabase else '❌'}")
     logger.info(f"   Supabase Admin: {'✅' if supabase_admin else '❌ (SUPABASE_SERVICE_KEY ausente)'}")
@@ -113,7 +114,7 @@ async def lifespan(app: FastAPI):
     logger.info("🛑 Encerrada")
 
 
-app = FastAPI(title="EditMind API", version="5.0.0", lifespan=lifespan)
+app = FastAPI(title="EditMind API", version="5.2.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -156,6 +157,47 @@ class RedefinirSenhaRequest(BaseModel):
         if len(v) < 6:
             raise ValueError("Senha deve ter pelo menos 6 caracteres.")
         return v
+
+
+class AtualizarNomeRequest(BaseModel):
+    nome: str
+
+    @field_validator("nome")
+    @classmethod
+    def nome_ok(cls, v: str) -> str:
+        nome = (v or "").strip()
+        if not nome:
+            raise ValueError("Nome é obrigatório.")
+        if len(nome) > 80:
+            raise ValueError("Nome deve ter no máximo 80 caracteres.")
+        return nome
+
+
+class AtualizarEmailRequest(BaseModel):
+    email: EmailStr
+
+
+class AtualizarSenhaRequest(BaseModel):
+    nova_senha: str
+
+    @field_validator("nova_senha")
+    @classmethod
+    def senha_ok(cls, v: str) -> str:
+        if len(v) < 6:
+            raise ValueError("Senha deve ter pelo menos 6 caracteres.")
+        return v
+
+
+class BulkDeleteRequest(BaseModel):
+    ids: list[str]
+
+    @field_validator("ids")
+    @classmethod
+    def ids_ok(cls, v: list[str]) -> list[str]:
+        ids = [str(i).strip() for i in (v or []) if str(i).strip()]
+        if not ids:
+            raise ValueError("Informe ao menos um ID.")
+        return ids[:100]
 
 
 class CorteConfig(BaseModel):
@@ -234,6 +276,11 @@ def validar_url_midia(url: str) -> None:
         raise ValueError("URL suportada apenas para YouTube ou TikTok.")
 
 
+def eh_tiktok_url(url: str) -> bool:
+    host = (urlparse(url).netloc or "").lower()
+    return "tiktok.com" in host
+
+
 async def get_current_user(authorization: Optional[str] = Header(None)) -> dict:
     """Valida o Bearer token do Supabase e extrai id/email do usuário."""
     if not authorization or not authorization.startswith("Bearer "):
@@ -255,7 +302,8 @@ async def get_current_user(authorization: Optional[str] = Header(None)) -> dict:
         if not user_email and not user_id:
             raise ValueError("Token sem email/id")
 
-        return {"id": user_id, "email": user_email}
+        user_meta = getattr(resp.user, "user_metadata", {}) or {}
+        return {"id": user_id, "email": user_email, "token": token, "user_metadata": user_meta}
     except Exception as e:
         logger.warning(f"Falha ao validar token Supabase: {e}")
         raise HTTPException(401, "Sessão inválida ou expirada.")
@@ -301,6 +349,48 @@ async def obter_metadados(caminho: str) -> dict:
     return {"resolucao": res, "fps": str(fps), "duracao_segundos": str(dur)}
 
 
+async def obter_info_codecs(caminho: str) -> dict:
+    proc = await asyncio.create_subprocess_exec(
+        "ffprobe", "-v", "quiet", "-print_format", "json",
+        "-show_streams", "-show_format", caminho,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.DEVNULL,
+    )
+    stdout, _ = await proc.communicate()
+    if proc.returncode != 0:
+        return {"video_codec": "", "audio_codec": "", "format_name": ""}
+    dados = json.loads(stdout.decode() or "{}")
+    video = next((s for s in dados.get("streams", []) if s.get("codec_type") == "video"), {})
+    audio = next((s for s in dados.get("streams", []) if s.get("codec_type") == "audio"), {})
+    return {
+        "video_codec": (video.get("codec_name") or "").lower(),
+        "audio_codec": (audio.get("codec_name") or "").lower(),
+        "format_name": (dados.get("format", {}).get("format_name") or "").lower(),
+    }
+
+
+async def normalizar_video_para_browser(entrada: str, saida: str, forcar_reencode: bool = False) -> str:
+    info = await obter_info_codecs(entrada)
+    video_ok = info["video_codec"] == "h264"
+    audio_ok = info["audio_codec"] in {"aac", "mp4a"}
+    formato_ok = "mp4" in info["format_name"] or "mov" in info["format_name"]
+    precisa_reencode = forcar_reencode or not (video_ok and audio_ok and formato_ok)
+
+    if not precisa_reencode:
+        await _ffmpeg("-y", "-i", entrada, "-c", "copy", "-movflags", "+faststart", saida)
+        return saida
+
+    await _ffmpeg(
+        "-y", "-i", entrada,
+        "-c:v", "libx264", "-preset", "veryfast", "-crf", "22",
+        "-pix_fmt", "yuv420p",
+        "-c:a", "aac", "-b:a", "128k", "-ac", "2",
+        "-movflags", "+faststart",
+        saida,
+    )
+    return saida
+
+
 async def extrair_audio(video: str, audio: str) -> None:
     await _ffmpeg(
         "-y", "-i", video, "-vn",
@@ -322,7 +412,9 @@ async def cortar_video(entrada: str, saida: str, inicio: float, fim: float, form
     else:
         await _ffmpeg(
             "-y", "-ss", str(inicio), "-to", str(fim), "-i", entrada,
-            "-c", "copy", "-avoid_negative_ts", "1", "-movflags", "+faststart", saida
+            "-c:v", "libx264", "-preset", "veryfast", "-crf", "23", "-pix_fmt", "yuv420p",
+            "-c:a", "aac", "-b:a", "128k", "-ac", "2",
+            "-movflags", "+faststart", saida
         )
 
 
@@ -731,6 +823,67 @@ async def _remover_arquivo_corte(video_url: str) -> None:
         return
 
 
+def _nome_fallback(email: Optional[str]) -> str:
+    if not email:
+        return "Usuário"
+    return email.split("@")[0]
+
+
+async def _obter_perfil_usuario(usuario: dict) -> dict:
+    user_id = usuario.get("id")
+    email = usuario.get("email") or ""
+    nome_meta = (usuario.get("user_metadata") or {}).get("nome") or (usuario.get("user_metadata") or {}).get("name")
+    nome = nome_meta or _nome_fallback(email)
+
+    perfil = None
+    if supabase_admin and user_id:
+        try:
+            resp = await asyncio.to_thread(
+                lambda: supabase_admin.table("profiles")
+                .select("id,user_id,email,nome,criado_em,atualizado_em")
+                .eq("user_id", user_id)
+                .limit(1)
+                .execute()
+            )
+            perfil = (resp.data or [None])[0]
+        except Exception as e:
+            logger.warning(f"Não foi possível ler perfil: {e}")
+
+    if perfil:
+        nome = (perfil.get("nome") or "").strip() or nome
+        email = perfil.get("email") or email
+        return {"id": perfil.get("id"), "user_id": user_id, "email": email, "nome": nome}
+
+    if supabase_admin and user_id:
+        payload = {"user_id": user_id, "email": email, "nome": nome}
+        try:
+            upsert = await asyncio.to_thread(
+                lambda: supabase_admin.table("profiles").upsert(payload, on_conflict="user_id").execute()
+            )
+            criado = (upsert.data or [None])[0]
+            if criado:
+                return {"id": criado.get("id"), "user_id": user_id, "email": criado.get("email"), "nome": criado.get("nome")}
+        except Exception as e:
+            logger.warning(f"Não foi possível criar perfil automaticamente: {e}")
+    return {"id": None, "user_id": user_id, "email": email, "nome": nome}
+
+
+async def _atualizar_auth_user(token: str, payload: dict) -> dict:
+    if not SUPABASE_URL or not SUPABASE_ANON_KEY:
+        raise HTTPException(503, "Configuração do Supabase Auth ausente.")
+    headers = {
+        "apikey": SUPABASE_ANON_KEY,
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json",
+    }
+    async with httpx.AsyncClient(timeout=20.0) as client:
+        resp = await client.put(f"{SUPABASE_URL}/auth/v1/user", headers=headers, json=payload)
+    if resp.status_code >= 400:
+        detalhe = resp.json().get("msg") if resp.headers.get("content-type", "").startswith("application/json") else resp.text
+        raise HTTPException(400, detalhe or "Não foi possível atualizar dados da conta.")
+    return resp.json()
+
+
 # ══════════════════════════════════════════════════════════════
 # PIPELINE CENTRAL
 # ══════════════════════════════════════════════════════════════
@@ -873,6 +1026,54 @@ async def redefinir_senha(dados: RedefinirSenhaRequest):
         raise HTTPException(400, f"Token inválido ou expirado: {e}")
 
 
+@app.get("/api/user/profile")
+async def obter_perfil(usuario: dict = Depends(get_current_user)):
+    perfil = await _obter_perfil_usuario(usuario)
+    return {"sucesso": True, "perfil": perfil}
+
+
+@app.patch("/api/user/profile/name")
+async def atualizar_nome(dados: AtualizarNomeRequest, usuario: dict = Depends(get_current_user)):
+    if not supabase_admin:
+        raise HTTPException(503, "Banco indisponível.")
+    perfil = await _obter_perfil_usuario(usuario)
+    await asyncio.to_thread(
+        lambda: supabase_admin.table("profiles").upsert(
+            {"user_id": usuario.get("id"), "email": perfil.get("email"), "nome": dados.nome},
+            on_conflict="user_id",
+        ).execute()
+    )
+    return {"sucesso": True, "mensagem": "Nome atualizado com sucesso.", "nome": dados.nome}
+
+
+@app.patch("/api/user/profile/email")
+async def atualizar_email(dados: AtualizarEmailRequest, usuario: dict = Depends(get_current_user)):
+    token = usuario.get("token")
+    if not token:
+        raise HTTPException(401, "Token inválido.")
+    _ = await _atualizar_auth_user(token, {"email": dados.email})
+    if supabase_admin and usuario.get("id"):
+        await asyncio.to_thread(
+            lambda: supabase_admin.table("profiles").upsert(
+                {"user_id": usuario.get("id"), "email": dados.email},
+                on_conflict="user_id",
+            ).execute()
+        )
+    return {
+        "sucesso": True,
+        "mensagem": "Solicitação de alteração de e-mail enviada. Verifique sua caixa de entrada para confirmar o novo e-mail no Supabase.",
+    }
+
+
+@app.patch("/api/user/profile/password")
+async def atualizar_senha(dados: AtualizarSenhaRequest, usuario: dict = Depends(get_current_user)):
+    token = usuario.get("token")
+    if not token:
+        raise HTTPException(401, "Token inválido.")
+    await _atualizar_auth_user(token, {"password": dados.nova_senha})
+    return {"sucesso": True, "mensagem": "Senha atualizada com sucesso."}
+
+
 # ══════════════════════════════════════════════════════════════
 # ENDPOINTS — PROCESSAMENTO
 # ══════════════════════════════════════════════════════════════
@@ -926,7 +1127,9 @@ async def processar_link(tasks: BackgroundTasks, dados: LinkRequest, usuario: di
     logger.info(f"Link Job {job_id} | usuário: {usuario['email']} | {dados.url} | cortes={len(config.cortes)}")
     try:
         await _ytdlp_download(dados.url, video_path)
-        resultado = await _pipeline(video_path, job_id, tasks, pasta_temp, config)
+        video_normalizado = str(pasta_temp / "video_browser.mp4")
+        await normalizar_video_para_browser(video_path, video_normalizado, forcar_reencode=eh_tiktok_url(dados.url))
+        resultado = await _pipeline(video_normalizado, job_id, tasks, pasta_temp, config)
         resultado = await _salvar_cortes_do_resultado(usuario, dados.url, resultado)
         return JSONResponse(resultado)
     except asyncio.TimeoutError:
@@ -955,11 +1158,13 @@ async def download_link(tasks: BackgroundTasks, dados: LinkRequest, usuario: dic
     logger.info(f"DL Job {job_id} | usuário: {usuario['email']} | {dados.url}")
     try:
         await _ytdlp_download(dados.url, video_path)
-        file_size = Path(video_path).stat().st_size
+        video_normalizado = str(pasta_temp / "video_browser.mp4")
+        await normalizar_video_para_browser(video_path, video_normalizado, forcar_reencode=eh_tiktok_url(dados.url))
+        file_size = Path(video_normalizado).stat().st_size
 
         def iterfile():
             try:
-                with open(video_path, "rb") as f:
+                with open(video_normalizado, "rb") as f:
                     while chunk := f.read(1024 * 1024):
                         yield chunk
             finally:
@@ -1088,12 +1293,116 @@ async def excluir_corte(corte_id: str, usuario: dict = Depends(get_current_user)
         raise HTTPException(500, "Erro ao excluir recorte.")
 
 
+@app.post("/api/cortes/bulk-delete")
+async def excluir_cortes_em_massa(dados: BulkDeleteRequest, usuario: dict = Depends(get_current_user)):
+    if not supabase_admin:
+        raise HTTPException(503, "Banco indisponível.")
+    user_email = usuario.get("email")
+    if not user_email:
+        raise HTTPException(401, "Usuário inválido.")
+
+    busca = await asyncio.to_thread(
+        lambda: supabase_admin.table("cortes")
+        .select("id,video_url,user_email")
+        .eq("user_email", user_email)
+        .in_("id", dados.ids)
+        .execute()
+    )
+    registros = busca.data or []
+    if not registros:
+        return {"sucesso": True, "excluidos": 0}
+
+    for corte in registros:
+        try:
+            await _remover_arquivo_corte(corte.get("video_url", ""))
+        except Exception as e:
+            logger.warning(f"Falha ao remover arquivo do corte {corte.get('id')}: {e}")
+
+    ids_existentes = [c.get("id") for c in registros if c.get("id")]
+    await asyncio.to_thread(
+        lambda: supabase_admin.table("cortes").delete().eq("user_email", user_email).in_("id", ids_existentes).execute()
+    )
+    return {"sucesso": True, "excluidos": len(ids_existentes)}
+
+
+@app.post("/api/cortes/bulk-download")
+async def baixar_cortes_em_massa(dados: BulkDeleteRequest, usuario: dict = Depends(get_current_user)):
+    if not supabase_admin:
+        raise HTTPException(503, "Banco indisponível.")
+    user_email = usuario.get("email")
+    if not user_email:
+        raise HTTPException(401, "Usuário inválido.")
+
+    busca = await asyncio.to_thread(
+        lambda: supabase_admin.table("cortes")
+        .select("id,titulo,video_url,user_email")
+        .eq("user_email", user_email)
+        .in_("id", dados.ids)
+        .execute()
+    )
+    registros = busca.data or []
+    if not registros:
+        raise HTTPException(404, "Nenhum recorte encontrado para download.")
+
+    pasta_temp = Path(tempfile.mkdtemp(prefix="editmind_zip_"))
+    zip_path = pasta_temp / "recortes_editmind.zip"
+
+    async def _baixar_para_arquivo(url: str, destino: Path):
+        async with httpx.AsyncClient(timeout=120.0, follow_redirects=True) as client:
+            resp = await client.get(url)
+            if resp.status_code >= 400:
+                raise RuntimeError("Falha ao baixar arquivo remoto")
+            destino.write_bytes(resp.content)
+
+    try:
+        with zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_DEFLATED) as zipf:
+            for i, corte in enumerate(registros, start=1):
+                nome_base = sanitizar(corte.get("titulo") or f"recorte_{i}").removesuffix(".mp4")
+                nome_zip = f"{nome_base}_{i}.mp4"
+                url = corte.get("video_url", "")
+                if url.startswith("/outputs/"):
+                    arquivo = Path(url.removeprefix("/")).resolve()
+                    if arquivo.exists():
+                        zipf.write(arquivo, arcname=nome_zip)
+                    continue
+                if url:
+                    destino = pasta_temp / f"tmp_{i}.mp4"
+                    await _baixar_para_arquivo(url, destino)
+                    zipf.write(destino, arcname=nome_zip)
+
+        file_size = zip_path.stat().st_size
+
+        def iter_zip():
+            try:
+                with open(zip_path, "rb") as f:
+                    while chunk := f.read(1024 * 1024):
+                        yield chunk
+            finally:
+                shutil.rmtree(pasta_temp, ignore_errors=True)
+
+        return StreamingResponse(
+            iter_zip(),
+            media_type="application/zip",
+            headers={
+                "Content-Disposition": 'attachment; filename="recortes_editmind.zip"',
+                "Content-Length": str(file_size),
+            },
+        )
+    except HTTPException:
+        shutil.rmtree(pasta_temp, ignore_errors=True)
+        raise
+    except Exception as e:
+        shutil.rmtree(pasta_temp, ignore_errors=True)
+        logger.error(f"Erro ao gerar ZIP de recortes: {e}")
+        raise HTTPException(500, "Falha ao gerar download em massa.")
+
+
 @app.get("/")
 async def health():
     return {
         "status": "online",
         "api": "EditMind",
-        "versao": "5.0.0",
+        "versao": "5.2.0",
         "servicos": {
             "openai": "ok" if OPENAI_API_KEY else "ausente",
             "supabase_auth": "ok" if supabase else "ausente",

@@ -32,9 +32,19 @@ const conteudosFeedback = $('conteudos-feedback');
 const quantidadeRecortes = $('quantidade-recortes');
 const recortesConfig = $('recortes-config');
 const formatoVertical = $('formato-vertical');
+const conteudosCount = $('conteudos-count');
+const btnSelectAll = $('btn-select-all');
+const btnClearSelection = $('btn-clear-selection');
+const btnDownloadSelected = $('btn-download-selected');
+const btnDeleteSelected = $('btn-delete-selected');
+const profileNome = $('profile-nome');
+const profileEmail = $('profile-email');
+const profileSenha = $('profile-senha');
+const profileFeedback = $('profile-feedback');
 
 window.ultimoResultado = null;
 window.meusCortes = [];
+window.selectedCortes = new Set();
 
 const FOCOS = [
     'Livre', 'Humor', 'Terror', 'Emocionante', 'Triste',
@@ -95,6 +105,16 @@ document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('.engine-card[data-duration], .engine-card[data-preset]').forEach(card => {
         card.addEventListener('click', () => selecionarEnginePreset(card));
     });
+
+    btnSelectAll?.addEventListener('click', selecionarTodosCortes);
+    btnClearSelection?.addEventListener('click', limparSelecaoCortes);
+    btnDownloadSelected?.addEventListener('click', baixarSelecionadosZip);
+    btnDeleteSelected?.addEventListener('click', excluirSelecionados);
+
+    carregarPerfil();
+    $('form-profile-nome')?.addEventListener('submit', salvarNomePerfil);
+    $('form-profile-email')?.addEventListener('submit', salvarEmailPerfil);
+    $('form-profile-senha')?.addEventListener('submit', salvarSenhaPerfil);
 });
 
 // ── ENGINE PRESETS ───────────────────────────────────────────
@@ -222,7 +242,7 @@ function animCard(el, val) {
 
 function resetUI() {
     pct(0);
-    msg('Motor em standby.');
+    msg('Engine pronta para receber seu projeto.');
     if (barraP) barraP.style.background = '';
     if (nomeArq) nomeArq.textContent = 'Aguardando feed...';
     if (metaRes) metaRes.textContent = '—';
@@ -573,8 +593,10 @@ function renderConteudos(cortes) {
     window.meusCortes = Array.isArray(cortes) ? cortes : [];
     if (window.meusCortes.length === 0) {
         renderEmptyStateConteudos();
+        limparSelecaoCortes();
         return;
     }
+    limparSelecaoCortes();
 
     conteudosLista.innerHTML = window.meusCortes.map((corte) => {
         const titulo = escaparHtml(corte.titulo || 'Sem título');
@@ -585,6 +607,7 @@ function renderConteudos(cortes) {
         const duracaoTipo = escaparHtml(duracaoLabel(corte.duracao_tipo));
         return `
             <article class="tool-bentoCard conteudo-card" data-corte-id="${corteId}">
+                <label class="conteudo-select-wrap"><input type="checkbox" class="conteudo-select" data-corte-id="${corteId}"> Selecionar</label>
                 <video src="${urlVideo}" controls preload="metadata" class="conteudo-video"></video>
                 <h3 class="tool-title conteudo-title">${titulo}</h3>
                 <p class="tool-description conteudo-date">Criado em: ${dataFmt}</p>
@@ -641,6 +664,127 @@ async function excluirCorte(corteId, btn) {
     }
 }
 
+function setProfileFeedback(texto, tipo = 'ok') {
+    if (!profileFeedback) return;
+    profileFeedback.textContent = texto || '';
+    profileFeedback.style.color = tipo === 'erro' ? '#ef4444' : '#22c55e';
+}
+
+async function carregarPerfil() {
+    const token = getAuthToken();
+    if (!token) return;
+    try {
+        const res = await fetch(`${API}/api/user/profile`, { headers: getAuthHeaders() });
+        if (!res.ok) return;
+        const data = await res.json();
+        const perfil = data?.perfil || {};
+        const nome = perfil.nome || perfil.email?.split('@')[0] || 'Usuário';
+        if (profileNome) profileNome.value = perfil.nome || '';
+        if (profileEmail) profileEmail.value = perfil.email || '';
+        const userEl = $('user-nome');
+        if (userEl) userEl.textContent = nome;
+        const oldUser = window.Auth?.getUsuario?.() || {};
+        localStorage.setItem(window.CONFIG?.USER_KEY || 'editmind_user', JSON.stringify({ ...oldUser, nome, email: perfil.email || oldUser.email }));
+    } catch (e) {
+        console.warn('Falha ao carregar perfil', e);
+    }
+}
+
+async function salvarNomePerfil(event) {
+    event.preventDefault();
+    const nome = profileNome?.value.trim();
+    if (!nome) return setProfileFeedback('Informe um nome válido.', 'erro');
+    const res = await fetch(`${API}/api/user/profile/name`, {
+        method: 'PATCH',
+        headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+        body: JSON.stringify({ nome }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) return setProfileFeedback(data.detail || 'Não foi possível atualizar o nome.', 'erro');
+    setProfileFeedback('Nome atualizado com sucesso.');
+    carregarPerfil();
+}
+
+async function salvarEmailPerfil(event) {
+    event.preventDefault();
+    const email = profileEmail?.value.trim();
+    if (!email) return setProfileFeedback('Informe um e-mail válido.', 'erro');
+    const res = await fetch(`${API}/api/user/profile/email`, {
+        method: 'PATCH',
+        headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+        body: JSON.stringify({ email }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) return setProfileFeedback(data.detail || 'Não foi possível atualizar o e-mail.', 'erro');
+    setProfileFeedback(data.mensagem || 'Verifique seu e-mail para confirmar a alteração.');
+}
+
+async function salvarSenhaPerfil(event) {
+    event.preventDefault();
+    const nova_senha = profileSenha?.value || '';
+    if (nova_senha.length < 6) return setProfileFeedback('A senha deve ter pelo menos 6 caracteres.', 'erro');
+    const res = await fetch(`${API}/api/user/profile/password`, {
+        method: 'PATCH',
+        headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+        body: JSON.stringify({ nova_senha }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) return setProfileFeedback(data.detail || 'Não foi possível atualizar a senha.', 'erro');
+    profileSenha.value = '';
+    setProfileFeedback('Senha atualizada com sucesso.');
+}
+
+function atualizarContadorSelecao() {
+    if (!conteudosCount) return;
+    const total = window.selectedCortes.size;
+    conteudosCount.textContent = `${total} selecionado${total === 1 ? '' : 's'}`;
+}
+
+function selecionarTodosCortes() {
+    window.meusCortes.forEach(c => { if (c.id) window.selectedCortes.add(c.id); });
+    document.querySelectorAll('.conteudo-select').forEach(cb => { cb.checked = true; });
+    atualizarContadorSelecao();
+}
+
+function limparSelecaoCortes() {
+    window.selectedCortes.clear();
+    document.querySelectorAll('.conteudo-select').forEach(cb => { cb.checked = false; });
+    atualizarContadorSelecao();
+}
+
+async function baixarSelecionadosZip() {
+    if (!window.selectedCortes.size) return alert('Selecione ao menos um recorte.');
+    const res = await fetch(`${API}/api/cortes/bulk-download`, {
+        method: 'POST',
+        headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+        body: JSON.stringify({ ids: Array.from(window.selectedCortes) }),
+    });
+    if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        return alert(data.detail || 'Falha ao baixar ZIP.');
+    }
+    const blob = await res.blob();
+    baixarBlob(blob, 'recortes_editmind.zip');
+}
+
+async function excluirSelecionados() {
+    if (!window.selectedCortes.size) return alert('Selecione ao menos um recorte.');
+    if (!confirm(`Excluir ${window.selectedCortes.size} recorte(s)?`)) return;
+    const res = await fetch(`${API}/api/cortes/bulk-delete`, {
+        method: 'POST',
+        headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+        body: JSON.stringify({ ids: Array.from(window.selectedCortes) }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) return alert(data.detail || 'Falha ao excluir recortes.');
+    const ids = new Set(window.selectedCortes);
+    window.meusCortes = window.meusCortes.filter(c => !ids.has(c.id));
+    ids.forEach(id => document.querySelector(`.conteudo-card[data-corte-id="${id}"]`)?.remove());
+    limparSelecaoCortes();
+    setConteudosFeedback(`${data.excluidos || ids.size} recorte(s) excluído(s).`, 'ok');
+    if (!window.meusCortes.length) renderEmptyStateConteudos();
+}
+
 // ── EVENT DELEGATION ─────────────────────────────────────────
 document.addEventListener('click', (event) => {
     const btnDownload = event.target.closest('.btn-download-video');
@@ -661,5 +805,14 @@ document.addEventListener('click', (event) => {
     const btnExcluir = event.target.closest('.btn-excluir-corte');
     if (btnExcluir) {
         excluirCorte(btnExcluir.getAttribute('data-corte-id'), btnExcluir);
+        return;
+    }
+
+    const cb = event.target.closest('.conteudo-select');
+    if (cb) {
+        const id = cb.getAttribute('data-corte-id');
+        if (cb.checked) window.selectedCortes.add(id);
+        else window.selectedCortes.delete(id);
+        atualizarContadorSelecao();
     }
 });

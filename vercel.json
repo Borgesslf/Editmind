@@ -18,10 +18,6 @@
       "dest": "/cadastro.html"
     },
     {
-      "src": "^/demo/?$",
-      "dest": "/demo.html"
-    },
-    {
       "src": "^/esqueci/?$",
       "dest": "/esqueci-senha.html"
     },
@@ -30,7 +26,7 @@
       "dest": "/redefinir-senha.html"
     },
     {
-      "src": "^/(home|index|login|cadastro|demo|esqueci-senha|redefinir-senha)\\.html$",
+      "src": "^/(home|index|login|cadastro|esqueci-senha|redefinir-senha)\\.html$",
       "dest": "/$1.html"
     },
     {

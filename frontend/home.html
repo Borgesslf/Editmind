@@ -9,140 +9,95 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800;900&display=swap" rel="stylesheet">
     <style>
-        body {
-            font-family: 'Inter', sans-serif;
-            background: #0b0d11;
-        }
-
-        .glass-panel {
-            background: rgba(255, 255, 255, 0.03);
-            backdrop-filter: blur(20px);
-        }
-
-        .glow-orange {
-            text-shadow: 0 0 30px rgba(249, 115, 22, 0.5);
-        }
+        body { font-family: 'Inter', sans-serif; background: #0b0d11; }
+        .glass-panel { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(20px); }
+        .glow-orange { text-shadow: 0 0 30px rgba(249, 115, 22, 0.45); }
+        .demo-chip { border: 1px solid rgba(249,115,22,.28); background: rgba(249,115,22,.1); }
     </style>
 </head>
 
 <body class="text-gray-100 min-h-screen flex flex-col overflow-x-hidden">
-
-    <!-- Header -->
     <header class="w-full flex justify-between items-center px-6 md:px-12 py-8 z-20">
         <a href="home.html" class="no-underline hover:scale-105 transition-transform inline-block">
             <h1 class="text-3xl md:text-4xl font-black italic tracking-tighter text-white">
                 EDIT<span class="text-[#f97316] drop-shadow-[0_0_15px_rgba(249,115,22,0.5)]">MIND</span>
             </h1>
         </a>
-        <a href="login.html"
-            class="text-xs font-black uppercase tracking-widest text-gray-400 hover:text-white border border-gray-700 hover:border-gray-500 px-5 py-2.5 rounded-full transition-all">
+        <a href="login.html" class="text-xs font-black uppercase tracking-widest text-gray-400 hover:text-white border border-gray-700 hover:border-gray-500 px-5 py-2.5 rounded-full transition-all">
             Login
         </a>
     </header>
 
-    <!-- Hero -->
     <main class="flex-1 w-full max-w-6xl mx-auto px-6 md:px-12 flex flex-col items-center">
-
         <section class="text-center pt-10 md:pt-20 pb-16 w-full">
-
-            <span
-                class="inline-block py-1.5 px-5 rounded-full border border-[#f97316]/40 text-[#f97316] text-[10px] font-black uppercase tracking-[0.2em] mb-8 bg-[#f97316]/05">
-                ✦ Cortes virais com IA
-            </span>
-
-            <h2
-                class="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black text-white tracking-tight leading-[1.1] mb-6 px-4">
-                Do podcast ao viral<br>
-                <span class="text-[#f97316] glow-orange">em um clique.</span>
-            </h2>
-
-            <p class="text-gray-400 text-sm sm:text-base md:text-lg max-w-xl mx-auto leading-relaxed mb-10 px-4">
-                Envie seu vídeo ou áudio. A IA transcreve, analisa e sugere o trecho
-                com maior potencial de viralizar — pronto para Shorts, Reels e TikTok.
-            </p>
-
-            <a id="btn-comecar" href="login.html"
-                class="inline-block bg-[#f97316] hover:bg-white hover:text-[#f97316] text-white font-black py-4 px-10 md:py-5 md:px-14 rounded-full text-xs md:text-sm uppercase tracking-[0.2em] shadow-[0_15px_35px_rgba(249,115,22,0.4)] transition-all hover:scale-105">
-                Começar agora
-            </a>
+            <span class="inline-block py-1.5 px-5 rounded-full border border-[#f97316]/40 text-[#f97316] text-[10px] font-black uppercase tracking-[0.2em] mb-8 bg-[#f97316]/05">✦ Cortes virais com IA</span>
+            <h2 class="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black text-white tracking-tight leading-[1.1] mb-6 px-4">Do podcast ao viral<br><span class="text-[#f97316] glow-orange">em um clique.</span></h2>
+            <p class="text-gray-400 text-sm sm:text-base md:text-lg max-w-xl mx-auto leading-relaxed mb-10 px-4">Envie seu vídeo ou áudio. A IA transcreve, analisa e sugere o trecho com maior potencial de viralizar.</p>
+            <a id="btn-comecar" href="login.html" class="inline-block bg-[#f97316] hover:bg-white hover:text-[#f97316] text-white font-black py-4 px-10 md:py-5 md:px-14 rounded-full text-xs md:text-sm uppercase tracking-[0.2em] shadow-[0_15px_35px_rgba(249,115,22,0.4)] transition-all hover:scale-105">Começar agora</a>
         </section>
 
-        <!-- Features -->
         <section class="w-full py-16 md:py-24 border-t border-gray-800/50">
-            <h3 class="text-[11px] font-black uppercase tracking-[0.2em] text-gray-600 text-center mb-12">
-                Como Funciona
-            </h3>
-
+            <h3 class="text-[11px] font-black uppercase tracking-[0.2em] text-gray-600 text-center mb-12">Como Funciona</h3>
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-
-                <div
-                    class="glass-panel p-8 rounded-[2rem] border border-gray-800 hover:border-[#f97316]/50 transition-all group cursor-default">
-                    <div
-                        class="w-10 h-10 rounded-xl bg-[#f97316]/10 text-[#f97316] flex items-center justify-center font-black text-base mb-6 group-hover:bg-[#f97316] group-hover:text-white transition-colors">
-                        1
-                    </div>
+                <div class="glass-panel p-8 rounded-[2rem] border border-gray-800 cursor-default">
+                    <div class="w-10 h-10 rounded-xl bg-[#f97316]/10 text-[#f97316] flex items-center justify-center font-black text-base mb-6">1</div>
                     <h4 class="text-white font-bold text-lg mb-3">Arraste a mídia</h4>
-                    <p class="text-gray-500 text-sm leading-relaxed">
-                        Envie o episódio em MP4 ou MOV. Suportamos até 3 minutos de vídeo.
-                    </p>
+                    <p class="text-gray-500 text-sm leading-relaxed">Envie o episódio em MP4 ou MOV. Suportamos até 3 minutos de vídeo.</p>
                 </div>
-
-                <div
-                    class="glass-panel p-8 rounded-[2rem] border border-gray-800 hover:border-[#f97316]/50 transition-all group cursor-default">
-                    <div
-                        class="w-10 h-10 rounded-xl bg-[#f97316]/10 text-[#f97316] flex items-center justify-center font-black text-base mb-6 group-hover:bg-[#f97316] group-hover:text-white transition-colors">
-                        2
-                    </div>
+                <div class="glass-panel p-8 rounded-[2rem] border border-gray-800 cursor-default">
+                    <div class="w-10 h-10 rounded-xl bg-[#f97316]/10 text-[#f97316] flex items-center justify-center font-black text-base mb-6">2</div>
                     <h4 class="text-white font-bold text-lg mb-3">Transcrição e Análise</h4>
-                    <p class="text-gray-500 text-sm leading-relaxed">
-                        Whisper transcreve com precisão. GPT-4o identifica o momento de maior impacto.
-                    </p>
+                    <p class="text-gray-500 text-sm leading-relaxed">Whisper transcreve com precisão. GPT-4o identifica o momento de maior impacto.</p>
                 </div>
-
-                <div
-                    class="glass-panel p-8 rounded-[2rem] border border-gray-800 hover:border-[#f97316]/50 transition-all group cursor-default">
-                    <div
-                        class="w-10 h-10 rounded-xl bg-[#f97316]/10 text-[#f97316] flex items-center justify-center font-black text-base mb-6 group-hover:bg-[#f97316] group-hover:text-white transition-colors">
-                        3
-                    </div>
+                <div class="glass-panel p-8 rounded-[2rem] border border-gray-800 cursor-default">
+                    <div class="w-10 h-10 rounded-xl bg-[#f97316]/10 text-[#f97316] flex items-center justify-center font-black text-base mb-6">3</div>
                     <h4 class="text-white font-bold text-lg mb-3">Corte Sugerido</h4>
-                    <p class="text-gray-500 text-sm leading-relaxed">
-                        Receba início, fim e motivo do corte. Baixe o clipe pronto para publicar.
-                    </p>
+                    <p class="text-gray-500 text-sm leading-relaxed">Receba início, fim e motivo do corte. Baixe o clipe pronto para publicar.</p>
                 </div>
-
             </div>
         </section>
 
-        <!-- CTA final -->
         <section class="w-full mb-20">
-            <div class="glass-panel border border-gray-800 rounded-[2.5rem] p-12 text-center">
-                <h3 class="text-3xl md:text-4xl font-black text-white mb-4 tracking-tight">
-                    Pronto para viralizar?
-                </h3>
-                <p class="text-gray-500 text-base mb-8 max-w-md mx-auto">
-                    Abra o EditMind, envie seu primeiro vídeo e veja a IA em ação.
-                </p>
-                <div class="flex flex-col sm:flex-row justify-center gap-4">
-                    <a href="login.html"
-                        class="inline-block bg-[#f97316] hover:bg-white hover:text-[#f97316] text-white font-black py-4 px-10 rounded-full text-xs uppercase tracking-[0.2em] shadow-[0_15px_35px_rgba(249,115,22,0.4)] transition-all hover:scale-105">
-                        Abrir EditMind
-                    </a>
-                    <a href="demo.html"
-                        class="inline-block bg-white/10 hover:bg-white hover:text-black text-white border border-white/10 font-black py-4 px-10 rounded-full text-xs uppercase tracking-[0.2em] transition-all hover:scale-105">
-                        Ver demonstração
-                    </a>
+            <div class="glass-panel border border-gray-800 rounded-[2.5rem] p-8 md:p-12">
+                <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-6 mb-6">
+                    <div>
+                        <h3 class="text-3xl md:text-4xl font-black text-white mb-3 tracking-tight">Demonstração integrada</h3>
+                        <p class="text-gray-400 text-sm md:text-base max-w-xl">Simule o fluxo do EditMind sem backend: upload, análise e entrega do recorte final em poucos segundos.</p>
+                    </div>
+                    <button id="btn-demo-run" class="bg-[#f97316] hover:bg-[#ea580c] text-white font-black py-3 px-8 rounded-full text-xs uppercase tracking-[0.2em] transition-all">Iniciar demonstração</button>
+                </div>
+
+                <div class="grid md:grid-cols-2 gap-6">
+                    <div class="border border-gray-800 rounded-2xl p-5 bg-black/35">
+                        <div class="flex justify-between items-center mb-3">
+                            <span class="text-[11px] uppercase tracking-[.18em] text-gray-500 font-bold">Engine Status</span>
+                            <span id="demo-status-percent" class="text-[#f97316] font-black">0%</span>
+                        </div>
+                        <div class="h-2 bg-gray-800 rounded-full overflow-hidden mb-3">
+                            <div id="demo-progress" class="h-2 bg-gradient-to-r from-[#f97316] to-[#facc15] w-0 transition-all duration-500"></div>
+                        </div>
+                        <p id="demo-step" class="text-sm text-gray-400">Pronto para simular o processamento.</p>
+                    </div>
+
+                    <div class="border border-gray-800 rounded-2xl p-5 bg-black/35">
+                        <p class="text-[11px] uppercase tracking-[.18em] text-gray-500 font-bold mb-3">Resultado do recorte</p>
+                        <div id="demo-result" class="hidden space-y-2">
+                            <div class="flex gap-2 flex-wrap">
+                                <span class="demo-chip rounded-full px-3 py-1 text-[11px] font-bold text-[#f97316]">Início 00:12</span>
+                                <span class="demo-chip rounded-full px-3 py-1 text-[11px] font-bold text-[#f97316]">Fim 00:44</span>
+                                <span class="demo-chip rounded-full px-3 py-1 text-[11px] font-bold text-[#f97316]">Foco Impactante</span>
+                            </div>
+                            <p class="text-sm text-gray-300">“Trecho com virada emocional e frase de efeito com alto potencial para retenção nos 3 primeiros segundos.”</p>
+                        </div>
+                        <p id="demo-placeholder" class="text-sm text-gray-500">Clique em <strong>Iniciar demonstração</strong> para ver a simulação.</p>
+                    </div>
                 </div>
             </div>
         </section>
-
     </main>
 
-    <!-- Footer -->
     <footer class="w-full text-center py-8 border-t border-gray-800/50">
-        <p class="text-xs font-semibold text-gray-700 tracking-widest uppercase">
-            EditMind © 2026 — Inteligência em Edição.
-        </p>
+        <p class="text-xs font-semibold text-gray-700 tracking-widest uppercase">EditMind © 2026 — Inteligência em Edição.</p>
     </footer>
 
     <script src="js/config.js"></script>
@@ -150,11 +105,48 @@
     <script>
         if (typeof Auth !== 'undefined' && Auth.estaLogado()) {
             const btn = document.getElementById('btn-comecar');
-            if (btn) {
-                btn.textContent = 'Ir para o Estúdio →';
-                btn.href = 'index.html';
-            }
+            if (btn) { btn.textContent = 'Ir para o Estúdio →'; btn.href = 'index.html'; }
         }
+
+        const demoSteps = [
+            { p: 18, text: 'Validando mídia e preset escolhido...' },
+            { p: 42, text: 'Whisper transcrevendo áudio...' },
+            { p: 68, text: 'IA avaliando ganchos virais...' },
+            { p: 88, text: 'Montando recorte e otimização para Reels...' },
+            { p: 100, text: 'Demonstração concluída com sucesso.' }
+        ];
+
+        let demoRunning = false;
+        document.getElementById('btn-demo-run')?.addEventListener('click', async () => {
+            if (demoRunning) return;
+            demoRunning = true;
+            const btn = document.getElementById('btn-demo-run');
+            const bar = document.getElementById('demo-progress');
+            const pct = document.getElementById('demo-status-percent');
+            const step = document.getElementById('demo-step');
+            const placeholder = document.getElementById('demo-placeholder');
+            const result = document.getElementById('demo-result');
+            btn.disabled = true;
+            btn.textContent = 'Rodando...';
+            bar.style.width = '0%';
+            pct.textContent = '0%';
+            step.textContent = 'Inicializando demonstração...';
+            result.classList.add('hidden');
+            placeholder.classList.remove('hidden');
+
+            for (const s of demoSteps) {
+                await new Promise(r => setTimeout(r, 700));
+                bar.style.width = `${s.p}%`;
+                pct.textContent = `${s.p}%`;
+                step.textContent = s.text;
+            }
+
+            placeholder.classList.add('hidden');
+            result.classList.remove('hidden');
+            btn.textContent = 'Executar novamente';
+            btn.disabled = false;
+            demoRunning = false;
+        });
     </script>
 </body>
 

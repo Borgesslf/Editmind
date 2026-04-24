@@ -94,7 +94,7 @@
                     <div id="status-envio" class="tool-bentoCard status-card">
                         <div class="status-header">
                             <span class="status-label">Engine Status</span>
-                            <div style="display:flex;align-items:baseline;gap:12px;">
+                            <div class="status-metrics">
                                 <span id="porcentagem-envio" class="status-percentage">0%</span>
                                 <span id="timer-display" class="status-timer">00:00</span>
                             </div>
@@ -189,8 +189,18 @@
                 <h2 class="title">Meus Conteúdos</h2>
                 <p class="subtitle">Sua esteira de cortes aprovados.</p>
             </div>
-            <p id="conteudos-feedback"
-                style="text-align:center;font-size:12px;font-weight:700;margin-bottom:14px;min-height:18px;"></p>
+            <p id="conteudos-feedback" class="conteudos-feedback"></p>
+            <div class="tool-bentoCard conteudos-toolbar" id="conteudos-toolbar">
+                <div class="conteudos-toolbar-left">
+                    <span id="conteudos-count">0 selecionados</span>
+                </div>
+                <div class="conteudos-toolbar-actions">
+                    <button type="button" id="btn-select-all" class="btn-secondary-lite">Selecionar tudo</button>
+                    <button type="button" id="btn-clear-selection" class="btn-secondary-lite">Limpar seleção</button>
+                    <button type="button" id="btn-download-selected" class="btn-secondary-lite">Baixar selecionados</button>
+                    <button type="button" id="btn-delete-selected" class="btn-danger-lite">Excluir selecionados</button>
+                </div>
+            </div>
             <div id="conteudos-lista" class="tools-grid"></div>
             <template id="conteudos-empty-template">
                 <div class="tool-bentoCard empty-state">
@@ -263,32 +273,54 @@
 
         <section id="aba-configs" class="section">
             <div class="section-header">
-                <h2 class="title">Ajustes da Engine</h2>
-                <p class="subtitle">Defina o preset de corte padrão ao fazer upload direto.</p>
+                <h2 class="title">Ajustes da Engine e Conta</h2>
+                <p class="subtitle">Defina o preset de corte padrão e gerencie seus dados de acesso.</p>
             </div>
-            <div id="engine-configs" style="max-width:860px;margin:0 auto;">
-                <div class="engine-grid">
-
-                    <div class="engine-card" data-preset="<30s" onclick="selecionarEnginePreset(this)">
-                        <div class="engine-label">&lt; 30s</div>
-                        <div class="engine-name">Vídeo Rápido</div>
-                        <div class="engine-desc">Alta retenção e loop rápido. Cortes de 10 a 29 segundos, perfeitos para
-                            TikTok e Reels.</div>
+            <div id="engine-configs" style="max-width:980px;margin:0 auto;display:grid;gap:20px;">
+                <div class="tool-bentoCard">
+                    <div class="card-header highlight">
+                        <span class="card-label">Preset padrão dos recortes</span>
                     </div>
-
-                    <div class="engine-card selected" data-preset="30s-60s" onclick="selecionarEnginePreset(this)">
-                        <div class="engine-label">30s – 60s</div>
-                        <div class="engine-name">Corte Padrão</div>
-                        <div class="engine-desc">Formato equilibrado para Shorts, Reels e TikTok. Tempo ideal para
-                            narrativa e engajamento.</div>
+                    <div class="engine-grid">
+                        <div class="engine-card" data-preset="<30s" onclick="selecionarEnginePreset(this)">
+                            <div class="engine-label">&lt; 30s</div>
+                            <div class="engine-name">Vídeo Rápido</div>
+                            <div class="engine-desc">Alta retenção e loop rápido. Cortes de 10 a 29 segundos.</div>
+                        </div>
+                        <div class="engine-card selected" data-preset="30s-60s" onclick="selecionarEnginePreset(this)">
+                            <div class="engine-label">30s – 60s</div>
+                            <div class="engine-name">Corte Padrão</div>
+                            <div class="engine-desc">Formato equilibrado para narrativa e engajamento.</div>
+                        </div>
+                        <div class="engine-card" data-preset=">60s" onclick="selecionarEnginePreset(this)">
+                            <div class="engine-label">&gt; 60s</div>
+                            <div class="engine-name">Corte Profundo</div>
+                            <div class="engine-desc">Para narrativa longa e contexto, com até 90 segundos.</div>
+                        </div>
                     </div>
+                </div>
 
-                    <div class="engine-card" data-preset=">60s" onclick="selecionarEnginePreset(this)">
-                        <div class="engine-label">&gt; 60s</div>
-                        <div class="engine-name">Corte Profundo</div>
-                        <div class="engine-desc">Para narrativa longa e contexto. Cortes de 61 a 90 segundos com
-                            profundidade de conteúdo.</div>
+                <div class="tool-bentoCard account-card">
+                    <div class="card-header highlight">
+                        <span class="card-label">Perfil do usuário</span>
                     </div>
+                    <p class="subtitle" style="margin-top:0;margin-bottom:16px;">Dados protegidos por token Bearer (Supabase Auth).</p>
+                    <form id="form-profile-nome" class="account-form-grid">
+                        <label class="input-label" for="profile-nome">Nome</label>
+                        <input id="profile-nome" class="input-field" type="text" maxlength="80" placeholder="Seu nome" />
+                        <button type="submit" class="btn-secondary-lite">Salvar nome</button>
+                    </form>
+                    <form id="form-profile-email" class="account-form-grid">
+                        <label class="input-label" for="profile-email">E-mail</label>
+                        <input id="profile-email" class="input-field" type="email" placeholder="seu@email.com" />
+                        <button type="submit" class="btn-secondary-lite">Atualizar e-mail</button>
+                    </form>
+                    <form id="form-profile-senha" class="account-form-grid">
+                        <label class="input-label" for="profile-senha">Nova senha</label>
+                        <input id="profile-senha" class="input-field" type="password" minlength="6" placeholder="••••••••" />
+                        <button type="submit" class="btn-secondary-lite">Atualizar senha</button>
+                    </form>
+                    <p id="profile-feedback" class="conteudos-feedback" style="text-align:left;margin-top:10px;"></p>
                 </div>
             </div>
         </section>

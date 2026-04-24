@@ -49,7 +49,6 @@ const Auth = Object.freeze({
         return true;
     },
 
-    modoDemo() { window.location.href = 'demo.html'; },
 
     // ── Chamada genérica ao backend ───────────────────────────
 
