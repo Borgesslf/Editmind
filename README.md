@@ -288,3 +288,15 @@ python -m http.server 3000
 - [ ] Redimensionamento para formato 9:16 (Reels/TikTok)
 - [ ] Integração com agendamento de posts
 - [ ] Planos de assinatura (Stripe)
+
+## Release V5
+
+A versão V5 adiciona múltiplos recortes por vídeo, suporte visual a YouTube/TikTok, parâmetros de foco/duração, saída vertical 9:16 e `MAX_DURACAO_S` configurável.
+
+Para permitir vídeos de até 30 minutos, configure no Render:
+
+```env
+MAX_DURACAO_S=1800
+```
+
+Use isso apenas em plano com recursos suficientes. No Render Free, mantenha o default seguro.

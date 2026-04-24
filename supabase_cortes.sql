@@ -37,3 +37,12 @@ begin
         with check (auth.email() = user_email);
     end if;
 end $$;
+
+-- Migração V5: metadados opcionais para múltiplos recortes.
+alter table public.cortes add column if not exists inicio_segundos numeric;
+alter table public.cortes add column if not exists fim_segundos numeric;
+alter table public.cortes add column if not exists foco text;
+alter table public.cortes add column if not exists duracao_tipo text;
+alter table public.cortes add column if not exists formato_vertical boolean not null default false;
+
+create index if not exists idx_cortes_foco on public.cortes (foco);

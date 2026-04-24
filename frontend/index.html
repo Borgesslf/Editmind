@@ -10,18 +10,15 @@
 </head>
 
 <body>
-
     <header class="header">
         <a href="home.html" class="logo">
             <h1 class="logoEDIT">EDIT<span class="logoMIND">MIND</span></h1>
         </a>
 
-        <!-- User info + logout (desktop) -->
         <div class="header-user">
             <span id="user-nome" class="header-user-name"></span>
             <button type="button" id="btn-logout" class="btn-logout-desktop" title="Sair">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                    stroke-linecap="round" stroke-linejoin="round">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
                     <polyline points="16 17 21 12 16 7" />
                     <line x1="21" y1="12" x2="9" y2="12" />
@@ -51,11 +48,9 @@
                 <button type="button" onclick="mudarAba('configs')" class="nav-item" data-aba="configs">
                     <span><img src="assets/img/settings.svg" alt="Config" class="nav-icon"></span>
                 </button>
-                <!-- Logout mobile (dentro do menu hamburguer) -->
                 <button type="button" id="btn-logout-mobile" class="nav-item nav-item-logout" title="Sair">
                     <span>
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
                             <polyline points="16 17 21 12 16 7" />
                             <line x1="21" y1="12" x2="9" y2="12" />
@@ -67,31 +62,45 @@
     </header>
 
     <main class="main-container">
-
-        <!-- ══ ABA: NOVO PROJETO ══════════════════════════════════ -->
         <section id="aba-inicio" class="section active">
-
             <div class="section-header">
                 <h2 class="title">Novo Projeto</h2>
-                <p class="subtitle">Alimente a IA com seu arquivo bruto.</p>
+                <p class="subtitle">Envie um vídeo e configure até três recortes com focos diferentes.</p>
             </div>
 
-            <!-- Painel de upload -->
             <div id="painel-upload" class="tools-grid">
-
                 <div class="upload-column">
                     <div id="area-soltar" class="tool-bentoCard upload-card">
                         <img src="assets/img/newVideo.svg" alt="upload" class="upload-icon">
                         <h3 class="upload-title">Arrastar mídia</h3>
-                        <p class="upload-subtitle">Suporta MP4 e MOV · máx 3 minutos · 200 MB</p>
-                        <input type="file" id="entrada-arquivo" class="hidden-input"
-                            accept="video/mp4,video/quicktime,video/avi,video/webm">
-                        <button onclick="document.getElementById('entrada-arquivo').click()" class="btn-upload">
+                        <p class="upload-subtitle">Suporta MP4, MOV, AVI e WEBM. Limite seguro padrão: 3 minutos.</p>
+                        <input type="file" id="entrada-arquivo" class="hidden-input" accept="video/mp4,video/quicktime,video/avi,video/webm">
+                        <button type="button" onclick="document.getElementById('entrada-arquivo').click()" class="btn-upload">
                             Selecionar Arquivo
                         </button>
                         <a href="assets/video_teste_15s.mp4" download class="upload-link">
-                            Não tem um vídeo? Baixe o teste (1 MB)
+                            Baixar vídeo de teste
                         </a>
+                    </div>
+
+                    <div class="tool-bentoCard config-card">
+                        <div class="card-header highlight">
+                            <span class="card-label">Configuração dos recortes</span>
+                        </div>
+
+                        <label class="input-label" for="quantidade-recortes">Quantidade de recortes</label>
+                        <select id="quantidade-recortes" class="input-field select-field">
+                            <option value="1">1 recorte</option>
+                            <option value="2">2 recortes</option>
+                            <option value="3">3 recortes</option>
+                        </select>
+
+                        <div id="recortes-config" class="recortes-config"></div>
+
+                        <label class="vertical-option">
+                            <input type="checkbox" id="formato-vertical">
+                            <span>Gerar em formato vertical 9:16 sem achatar</span>
+                        </label>
                     </div>
                 </div>
 
@@ -128,10 +137,7 @@
                 </div>
             </div>
 
-            <!-- Painel de resultado da IA -->
             <div id="painel-ia" class="painel-ia hidden">
-
-                <!-- Transcrição -->
                 <div class="tool-bentoCard transcription-card">
                     <div class="card-header">
                         <span class="card-status-dot"></span>
@@ -146,13 +152,11 @@
                     </div>
                 </div>
 
-                <!-- Corte viral -->
                 <div class="tool-bentoCard cut-card">
                     <div class="card-header highlight">
-                        <span class="card-label">Corte Viral Encontrado</span>
+                        <span class="card-label">Recortes Encontrados</span>
                     </div>
-
-                    <div class="cut-time">
+                    <div class="cut-time legacy-first-cut">
                         <div>
                             <span class="meta-label">Início</span>
                             <span id="corte-inicio" class="cut-value">00:00:00</span>
@@ -163,104 +167,97 @@
                             <span id="corte-fim" class="cut-value highlight-text">00:00:00</span>
                         </div>
                     </div>
-
-                    <div class="cut-reason">
-                        <span class="meta-label">Motivo do Algoritmo</span>
+                    <div class="cut-reason legacy-first-cut">
+                        <span class="meta-label">Motivo do primeiro recorte</span>
                         <p id="corte-motivo">...</p>
                     </div>
-
-                    <!--
-                    #area-download é preenchido pelo app.js com:
-                    - <video> player
-                    - botão "▶ Assistir"
-                    - botão "⬇ Baixar MP4"
-                -->
-                    <div id="area-download" class="cut-download"></div>
-
-                    <button onclick="resetarNovoCorte()" class="btn-secondary">
-                        Analisar Outro Vídeo
-                    </button>
+                    <div id="area-download" class="cut-download multi-cuts-area"></div>
+                    <button type="button" onclick="resetarNovoCorte()" class="btn-secondary">Analisar Outro Vídeo</button>
                 </div>
             </div>
-
         </section>
 
-        <!-- ══ ABA: MEUS CONTEÚDOS ════════════════════════════════ -->
         <section id="aba-conteudos" class="section">
             <div class="section-header">
                 <h2 class="title">Meus Conteúdos</h2>
                 <p class="subtitle">Sua esteira de cortes aprovados.</p>
             </div>
-            <p id="conteudos-feedback"
-                style="text-align:center;font-size:12px;font-weight:700;margin-bottom:14px;min-height:18px;"></p>
+            <p id="conteudos-feedback" style="text-align:center;font-size:12px;font-weight:700;margin-bottom:14px;min-height:18px;"></p>
             <div id="conteudos-lista" class="tools-grid"></div>
             <template id="conteudos-empty-template">
                 <div class="tool-bentoCard empty-state">
                     <img src="assets/img/content.svg" alt="content" class="content-icon">
                     <h3 class="upload-title">Vazio por aqui</h3>
                     <p class="upload-subtitle">Inicie fazendo o upload do seu primeiro arquivo bruto.</p>
-                    <button onclick="mudarAba('inicio')" class="btn-voltaInicio">Criar Projeto</button>
+                    <button type="button" onclick="mudarAba('inicio')" class="btn-voltaInicio">Criar Projeto</button>
                 </div>
             </template>
         </section>
 
-        <!-- ══ ABA: FERRAMENTAS ═══════════════════════════════════ -->
         <section id="aba-ferramentas" class="section">
             <div class="section-header">
                 <h2 class="title">Ferramentas Extras</h2>
                 <p class="subtitle">Utilitários de alta performance.</p>
             </div>
 
-            <div class="tools-grid">
-
-                <!-- YouTube Clipper -->
+            <div class="tools-grid link-tools-grid">
                 <div class="tool-bentoCard tool-card">
                     <div class="tool-header">
-                        <img src="assets/img/youtubeLogo.svg" alt="YT" class="yt-icon">
+                        <img src="assets/img/youtubeLogo.svg" alt="YouTube" class="yt-icon">
                         <div>
                             <h3 class="tool-title">YouTube Clipper</h3>
-                            <p class="tool-description">Cole o link — a IA recorta o melhor trecho</p>
+                            <p class="tool-description">Cole o link para processar ou baixar.</p>
                         </div>
                     </div>
-
-                    <label class="input-label">URL do Vídeo</label>
-                    <input type="url" id="input-youtube" class="input-field"
-                        placeholder="https://youtube.com/watch?v=..." autocomplete="off">
-
-                    <!-- Botão principal: processa com IA -->
-                    <button id="btn-yt-processar" onclick="processarYouTube()" class="btn-yt btn-yt-primary">
-                        PROCESSAR COM IA ⚡
-                    </button>
-
-                    <div class="yt-divider">ou</div>
-
-                    <!-- Botão secundário: só baixa -->
-                    <button id="btn-yt-baixar" onclick="baixarYouTube()" class="btn-yt btn-yt-secondary">
-                        SÓ BAIXAR (MP4)
-                    </button>
+                    <label class="input-label">URL do YouTube</label>
+                    <input type="url" id="input-youtube" class="input-field" placeholder="https://youtube.com/watch?v=..." autocomplete="off">
+                    <button id="btn-yt-processar" type="button" onclick="processarYouTube()" class="btn-yt btn-youtube-red">Processar</button>
+                    <button id="btn-yt-baixar" type="button" onclick="baixarYouTube()" class="btn-yt btn-yt-secondary">Baixar MP4</button>
                 </div>
 
-                <!-- Módulo em construção -->
-                <div class="tool-bentoCard empty-tool">
-                    <p>Mais módulos em breve</p>
+                <div class="tool-bentoCard tool-card">
+                    <div class="tool-header">
+                        <div class="tiktok-mark">♪</div>
+                        <div>
+                            <h3 class="tool-title">TikTok Clipper</h3>
+                            <p class="tool-description">Cole o link para processar ou baixar.</p>
+                        </div>
+                    </div>
+                    <label class="input-label">URL do TikTok</label>
+                    <input type="url" id="input-tiktok" class="input-field" placeholder="https://www.tiktok.com/@perfil/video/..." autocomplete="off">
+                    <button id="btn-tt-processar" type="button" onclick="processarTikTok()" class="btn-yt btn-tiktok-white">Processar</button>
+                    <button id="btn-tt-baixar" type="button" onclick="baixarTikTok()" class="btn-yt btn-yt-secondary">Baixar MP4</button>
                 </div>
             </div>
         </section>
 
-        <!-- ══ ABA: CONFIGS ═══════════════════════════════════════ -->
         <section id="aba-configs" class="section">
             <div class="section-header">
-                <h2 class="title">Ajustes da Engine</h2>
-                <p class="subtitle">Configuração da IA</p>
+                <h2 class="title">Parâmetros de Extração</h2>
+                <p class="subtitle">Calibre o algoritmo da IA.</p>
             </div>
-            <div class="tools-grid">
-                <div class="tool-bentoCard empty-state">
-                    <img src="assets/img/settings.svg" alt="Settings" class="set-icon">
-                    <p>Painel em desenvolvimento</p>
+            <div class="tool-bentoCard engine-panel">
+                <span class="status-label config-label">Duração alvo do corte</span>
+                <div class="engine-options" data-engine-options>
+                    <button type="button" class="engine-card" data-duration="curto">
+                        <strong>&lt; 30s</strong>
+                        <small>Dinâmico</small>
+                        <span>Alta retenção e loop rápido. Mínimo de 10 segundos.</span>
+                    </button>
+                    <button type="button" class="engine-card active" data-duration="medio">
+                        <strong>30s - 60s</strong>
+                        <small>Padrão viral</small>
+                        <span>Formato equilibrado para Shorts, Reels e TikTok.</span>
+                    </button>
+                    <button type="button" class="engine-card" data-duration="longo">
+                        <strong>&gt; 60s</strong>
+                        <small>Profundo</small>
+                        <span>Narrativa longa com limite máximo de 90 segundos.</span>
+                    </button>
                 </div>
+                <div class="engine-hint">Ao selecionar uma duração, os recortes configurados no Novo Projeto serão atualizados.</div>
             </div>
         </section>
-
     </main>
 
     <script src="./js/config.js"></script>

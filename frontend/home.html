@@ -11,6 +11,7 @@
     <style>
         body {
             font-family: 'Inter', sans-serif;
+            background: radial-gradient(circle at 50% -20%, #24150c, #000 80%);
         }
 
         .glass-panel {
@@ -24,7 +25,7 @@
     </style>
 </head>
 
-<body class="bg-[#0b0d11] text-gray-100 min-h-screen flex flex-col overflow-x-hidden">
+<body class="text-gray-100 min-h-screen flex flex-col overflow-x-hidden">
 
     <!-- Header -->
     <header class="w-full flex justify-between items-center px-6 md:px-12 py-8 z-20">
@@ -122,10 +123,16 @@
                 <p class="text-gray-500 text-base mb-8 max-w-md mx-auto">
                     Abra o EditMind, envie seu primeiro vídeo e veja a IA em ação.
                 </p>
-                <a href="login.html"
-                    class="inline-block bg-[#f97316] hover:bg-white hover:text-[#f97316] text-white font-black py-4 px-10 rounded-full text-xs uppercase tracking-[0.2em] shadow-[0_15px_35px_rgba(249,115,22,0.4)] transition-all hover:scale-105">
-                    Abrir EditMind
-                </a>
+                <div class="flex flex-col sm:flex-row justify-center gap-4">
+                    <a href="login.html"
+                        class="inline-block bg-[#f97316] hover:bg-white hover:text-[#f97316] text-white font-black py-4 px-10 rounded-full text-xs uppercase tracking-[0.2em] shadow-[0_15px_35px_rgba(249,115,22,0.4)] transition-all hover:scale-105">
+                        Abrir EditMind
+                    </a>
+                    <a href="demo.html"
+                        class="inline-block bg-white/10 hover:bg-white hover:text-black text-white border border-white/10 font-black py-4 px-10 rounded-full text-xs uppercase tracking-[0.2em] transition-all hover:scale-105">
+                        Ver demonstração
+                    </a>
+                </div>
             </div>
         </section>
 
