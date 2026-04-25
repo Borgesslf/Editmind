@@ -29,14 +29,15 @@
         </div>
 
         <nav class="btn-nav" id="btnNav">
-            <button type="button" class="nav-toggle" id="navToggle" aria-label="Menu">
+            <button type="button" class="nav-toggle" id="navToggle" aria-label="Menu" aria-expanded="false"
+                aria-controls="navItems">
                 <span class="menu-icon-wrapper">
                     <span class="menu-icon-line first"></span>
                     <span class="menu-icon-line middle"></span>
                     <span class="menu-icon-line last"></span>
                 </span>
             </button>
-            <div class="nav-items">
+            <div class="nav-items" id="navItems">
                 <button type="button" onclick="mudarAba('inicio')" class="nav-item active" data-aba="inicio">
                     <span><img src="assets/img/home.svg" alt="Início" class="nav-icon"></span>
                 </button>

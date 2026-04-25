@@ -90,13 +90,43 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const toggle = $('navToggle'), nav = $('btnNav');
     if (toggle && nav) {
+        const syncNavA11y = () => toggle.setAttribute('aria-expanded', String(nav.classList.contains('open')));
+
         toggle.addEventListener('click', e => {
             e.stopPropagation();
             nav.classList.toggle('open');
+            syncNavA11y();
         });
+
         document.addEventListener('click', e => {
-            if (!nav.contains(e.target)) nav.classList.remove('open');
+            if (!nav.contains(e.target)) {
+                nav.classList.remove('open');
+                syncNavA11y();
+            }
         });
+
+        nav.querySelectorAll('.nav-item').forEach(item => {
+            item.addEventListener('click', () => {
+                nav.classList.remove('open');
+                syncNavA11y();
+            });
+        });
+
+        window.addEventListener('resize', () => {
+            if (window.innerWidth >= 769) {
+                nav.classList.remove('open');
+                syncNavA11y();
+            }
+        });
+
+        document.addEventListener('keydown', e => {
+            if (e.key === 'Escape') {
+                nav.classList.remove('open');
+                syncNavA11y();
+            }
+        });
+
+        syncNavA11y();
     }
 
     quantidadeRecortes?.addEventListener('change', renderRecortesConfig);

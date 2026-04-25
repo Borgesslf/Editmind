@@ -57,7 +57,7 @@ YTDLP_COOKIES_FILE = os.getenv("YTDLP_COOKIES_FILE", "").strip()
 YTDLP_EXTRACTOR_ARGS = os.getenv("YTDLP_EXTRACTOR_ARGS", "youtube:player_client=android,web")
 
 # Default seguro para Render Free. Para 30 minutos, configure MAX_DURACAO_S=1800 no Render.
-MAX_DURACAO_S = int(os.getenv("MAX_DURACAO_S", "660"))
+MAX_DURACAO_S = int(os.getenv("MAX_DURACAO_S", "180"))
 MAX_BYTES = int(os.getenv("MAX_BYTES", str(200 * 1024 * 1024)))
 
 # ── Clientes ──────────────────────────────────────────────────
