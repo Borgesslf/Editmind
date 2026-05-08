@@ -60,6 +60,16 @@ YTDLP_EXTRACTOR_ARGS = os.getenv("YTDLP_EXTRACTOR_ARGS", "youtube:player_client=
 MAX_DURACAO_S = int(os.getenv("MAX_DURACAO_S", "180"))
 MAX_BYTES = int(os.getenv("MAX_BYTES", str(200 * 1024 * 1024)))
 
+# Modo de apresentação: mantém as funcionalidades existentes, mas limita o trecho
+# realmente analisado/renderizado para a demonstração caber em cerca de 1min–1min30.
+PROCESSAMENTO_RAPIDO_APRESENTACAO = os.getenv("PROCESSAMENTO_RAPIDO_APRESENTACAO", "1").strip().lower() not in {"0", "false", "no", "off", "nao", "não"}
+MAX_TRECHO_PROCESSAMENTO_S = float(os.getenv("MAX_TRECHO_PROCESSAMENTO_S", "90"))
+CORRIGIR_TRANSCRICAO = os.getenv("CORRIGIR_TRANSCRICAO", "0").strip().lower() in {"1", "true", "yes", "on", "sim"}
+OPENAI_MODELO_ANALISE = os.getenv("OPENAI_MODELO_ANALISE", "gpt-4o-mini")
+FFMPEG_PRESET_CORTE = os.getenv("FFMPEG_PRESET_CORTE", "ultrafast")
+VERTICAL_W = int(os.getenv("VERTICAL_W", "720"))
+VERTICAL_H = int(os.getenv("VERTICAL_H", "1280"))
+
 # ── Clientes ──────────────────────────────────────────────────
 openai_client = AsyncOpenAI(api_key=OPENAI_API_KEY) if OPENAI_API_KEY else None
 
@@ -109,6 +119,8 @@ async def lifespan(app: FastAPI):
     logger.info(f"   Supabase Auth : {'✅' if supabase else '❌'}")
     logger.info(f"   Supabase Admin: {'✅' if supabase_admin else '❌ (SUPABASE_SERVICE_KEY ausente)'}")
     logger.info(f"   MAX_DURACAO_S : {MAX_DURACAO_S}s")
+    logger.info(f"   Modo rápido    : {'✅' if PROCESSAMENTO_RAPIDO_APRESENTACAO else '❌'} ({MAX_TRECHO_PROCESSAMENTO_S:.0f}s)")
+    logger.info(f"   Modelo análise : {OPENAI_MODELO_ANALISE}")
     logger.info(f"   Cookies yt-dlp: {'✅' if YTDLP_COOKIES_FILE and Path(YTDLP_COOKIES_FILE).exists() else '❌'}")
     yield
     logger.info("🛑 Encerrada")
@@ -439,8 +451,8 @@ async def normalizar_video_para_browser(entrada: str, saida: str, forcar_reencod
 
     await _ffmpeg(
         "-y", "-i", entrada,
-        "-c:v", "libx264", "-preset", "veryfast", "-crf", "22",
-        "-pix_fmt", "yuv420p",
+        "-c:v", "libx264", "-preset", FFMPEG_PRESET_CORTE, "-crf", "22",
+        "-pix_fmt", "yuv420p", "-threads", "0",
         "-c:a", "aac", "-b:a", "128k", "-ac", "2",
         "-movflags", "+faststart",
         saida,
@@ -456,21 +468,28 @@ async def extrair_audio(video: str, audio: str) -> None:
 
 
 async def cortar_video(entrada: str, saida: str, inicio: float, fim: float, formato_vertical: bool = False) -> None:
+    inicio = max(0.0, float(inicio))
+    duracao_corte = max(0.1, float(fim) - inicio)
+
     if formato_vertical:
-        # Vertical 9:16 sem achatamento: mantém proporção e adiciona padding.
-        filtro = "scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2,setsar=1"
+        # Vertical 9:16 sem achatamento. Em modo apresentação usa 720p vertical
+        # para renderizar mais rápido e ainda ficar adequado para Shorts/Reels/TikTok.
+        filtro = (
+            f"scale={VERTICAL_W}:{VERTICAL_H}:force_original_aspect_ratio=decrease,"
+            f"pad={VERTICAL_W}:{VERTICAL_H}:(ow-iw)/2:(oh-ih)/2,setsar=1"
+        )
         await _ffmpeg(
-            "-y", "-ss", str(inicio), "-to", str(fim), "-i", entrada,
+            "-y", "-ss", str(inicio), "-i", entrada, "-t", str(duracao_corte),
             "-vf", filtro,
-            "-c:v", "libx264", "-preset", "veryfast", "-crf", "23",
-            "-c:a", "aac", "-b:a", "128k",
+            "-c:v", "libx264", "-preset", FFMPEG_PRESET_CORTE, "-crf", "24", "-threads", "0",
+            "-c:a", "aac", "-b:a", "96k", "-ac", "2",
             "-movflags", "+faststart", saida
         )
     else:
         await _ffmpeg(
-            "-y", "-ss", str(inicio), "-to", str(fim), "-i", entrada,
-            "-c:v", "libx264", "-preset", "veryfast", "-crf", "23", "-pix_fmt", "yuv420p",
-            "-c:a", "aac", "-b:a", "128k", "-ac", "2",
+            "-y", "-ss", str(inicio), "-i", entrada, "-t", str(duracao_corte),
+            "-c:v", "libx264", "-preset", FFMPEG_PRESET_CORTE, "-crf", "23", "-pix_fmt", "yuv420p", "-threads", "0",
+            "-c:a", "aac", "-b:a", "96k", "-ac", "2",
             "-movflags", "+faststart", saida
         )
 
@@ -513,11 +532,37 @@ def config_from_link_request(dados: LinkRequest) -> ProcessamentoConfig:
     return ProcessamentoConfig(cortes=dados.cortes or [CorteConfig()], formato_vertical=dados.formato_vertical)
 
 
+async def preparar_trecho_rapido(video_path: str, pasta_temp: Path, duracao: float, metadados: dict) -> tuple[str, float, dict]:
+    """Cria uma amostra temporária para apresentação sem alterar o arquivo enviado pelo usuário."""
+    if not PROCESSAMENTO_RAPIDO_APRESENTACAO or MAX_TRECHO_PROCESSAMENTO_S <= 0 or duracao <= MAX_TRECHO_PROCESSAMENTO_S:
+        return video_path, duracao, metadados
+
+    trecho_path = str(pasta_temp / "trecho_apresentacao.mp4")
+    duracao_trecho = min(MAX_TRECHO_PROCESSAMENTO_S, duracao)
+    logger.info(f"Modo rápido | usando trecho temporário de {duracao_trecho:.0f}s para acelerar a apresentação.")
+    await _ffmpeg(
+        "-y", "-ss", "0", "-i", video_path, "-t", str(duracao_trecho),
+        "-c:v", "libx264", "-preset", FFMPEG_PRESET_CORTE, "-crf", "24", "-pix_fmt", "yuv420p", "-threads", "0",
+        "-c:a", "aac", "-b:a", "96k", "-ac", "2",
+        "-movflags", "+faststart",
+        trecho_path,
+    )
+
+    meta_trecho = await obter_metadados(trecho_path)
+    meta_trecho["duracao_original_segundos"] = metadados.get("duracao_segundos", str(duracao))
+    meta_trecho["modo_rapido_apresentacao"] = "true"
+    try:
+        duracao_final = float(meta_trecho.get("duracao_segundos", duracao_trecho))
+    except Exception:
+        duracao_final = duracao_trecho
+    return trecho_path, duracao_final, meta_trecho
+
+
 # ══════════════════════════════════════════════════════════════
 # HELPERS — YT-DLP (YouTube/TikTok)
 # ══════════════════════════════════════════════════════════════
 
-async def _ytdlp_download(url: str, output_path: str) -> None:
+async def _ytdlp_download(url: str, output_path: str, limitar_para_processamento: bool = False) -> None:
     validar_url_midia(url)
     common_args = [
         "--merge-output-format", "mp4",
@@ -529,19 +574,19 @@ async def _ytdlp_download(url: str, output_path: str) -> None:
         "--fragment-retries", "8",
         "--file-access-retries", "8",
         "--socket-timeout", "30",
-        "--retry-sleep", "2",
-        "--sleep-requests", "1",
-        "--sleep-interval", "1",
-        "--max-sleep-interval", "4",
+        "--retry-sleep", "1",
         "--no-cache-dir",
         "--extractor-args", YTDLP_EXTRACTOR_ARGS,
         "--user-agent", YT_DLP_USER_AGENT,
         "--add-header", "Accept-Language:pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7",
         "--add-header", "Accept:text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
     ]
+    if limitar_para_processamento and PROCESSAMENTO_RAPIDO_APRESENTACAO and MAX_TRECHO_PROCESSAMENTO_S > 0:
+        common_args.extend(["--download-sections", f"*0-{int(MAX_TRECHO_PROCESSAMENTO_S)}"])
+
     formatos = [
+        "bestvideo[ext=mp4][height<=720]+bestaudio[ext=m4a]/best[ext=mp4][height<=720]/best[height<=720]/best",
         "bestvideo[ext=mp4][height<=1080]+bestaudio[ext=m4a]/bestvideo[ext=mp4]+bestaudio/best[ext=mp4]/best",
-        "bv*[height<=720]+ba/b[height<=720]/best",
         "best",
     ]
 
@@ -569,7 +614,7 @@ async def _ytdlp_download(url: str, output_path: str) -> None:
             stderr=asyncio.subprocess.PIPE,
         )
         try:
-            _, stderr = await asyncio.wait_for(proc.communicate(), timeout=420)
+            _, stderr = await asyncio.wait_for(proc.communicate(), timeout=240)
         except asyncio.TimeoutError:
             proc.kill()
             await proc.communicate()
@@ -611,7 +656,9 @@ async def transcrever(audio_path: str) -> str:
             model="whisper-1", file=f, language="pt", response_format="text"
         )
 
-    texto = resp if isinstance(resp, str) else getattr(resp, "text", "")
+    texto = (resp if isinstance(resp, str) else getattr(resp, "text", "")).strip()
+    if not CORRIGIR_TRANSCRICAO or not texto:
+        return texto
 
     corr = await openai_client.chat.completions.create(
         model="gpt-4o-mini",
@@ -719,13 +766,13 @@ async def analisar_viral_multiplos(transcricao: str, duracao: float, configs: li
     }
 
     resp = await openai_client.chat.completions.create(
-        model="gpt-4o",
+        model=OPENAI_MODELO_ANALISE,
         messages=[
             {"role": "system", "content": system},
             {"role": "user", "content": json.dumps(user, ensure_ascii=False)},
         ],
         temperature=0.25,
-        max_tokens=900,
+        max_tokens=700,
         response_format={"type": "json_object"},
     )
 
@@ -950,16 +997,18 @@ async def _pipeline(video_path: str, job_id: str, tasks: BackgroundTasks, pasta_
     duracao = float(metadados["duracao_segundos"])
     logger.info(f"Job {job_id} | metadados: {metadados}")
 
-    if duracao > MAX_DURACAO_S:
+    if duracao > MAX_DURACAO_S and not PROCESSAMENTO_RAPIDO_APRESENTACAO:
         raise HTTPException(
             413,
             f"Vídeo longo demais ({int(duracao)}s). Limite atual: {MAX_DURACAO_S}s. "
             "Para até 30 minutos, configure MAX_DURACAO_S=1800 em um plano Render adequado.",
         )
 
+    video_processamento, duracao, metadados_resposta = await preparar_trecho_rapido(video_path, pasta_temp, duracao, metadados)
+
     audio_path = str(pasta_temp / "audio.mp3")
     logger.info(f"Job {job_id} | extraindo áudio...")
-    await extrair_audio(video_path, audio_path)
+    await extrair_audio(video_processamento, audio_path)
 
     logger.info(f"Job {job_id} | transcrevendo...")
     transcricao = await transcrever(audio_path)
@@ -973,7 +1022,7 @@ async def _pipeline(video_path: str, job_id: str, tasks: BackgroundTasks, pasta_
         nome_saida = f"corte_{job_id}_{idx}.mp4" if len(analises) > 1 else f"corte_{job_id}.mp4"
         caminho_local = str(OUTPUT_DIR / nome_saida)
         logger.info(f"Job {job_id} | cortando recorte {idx}: {analise['inicio']}s → {analise['fim']}s")
-        await cortar_video(video_path, caminho_local, analise["inicio"], analise["fim"], config.formato_vertical)
+        await cortar_video(video_processamento, caminho_local, analise["inicio"], analise["fim"], config.formato_vertical)
 
         url_publica = await upload_storage(caminho_local, nome_saida)
         if url_publica:
@@ -1004,7 +1053,7 @@ async def _pipeline(video_path: str, job_id: str, tasks: BackgroundTasks, pasta_
         "transcricao": transcricao,
         "corte_sugerido": {k: primeiro[k] for k in ["inicio", "fim", "inicio_segundos", "fim_segundos", "motivo"]},
         "cortes": cortes_resposta,
-        "detalhes_tecnicos": metadados,
+        "detalhes_tecnicos": metadados_resposta,
         "url_corte": primeiro["url_corte"],
         "storage": primeiro["storage"],
     }
@@ -1183,7 +1232,7 @@ async def processar_link(tasks: BackgroundTasks, dados: LinkRequest, usuario: di
     video_path = str(pasta_temp / "video.mp4")
     logger.info(f"Link Job {job_id} | usuário: {usuario['email']} | {dados.url} | cortes={len(config.cortes)}")
     try:
-        await _ytdlp_download(dados.url, video_path)
+        await _ytdlp_download(dados.url, video_path, limitar_para_processamento=True)
         video_normalizado = str(pasta_temp / "video_browser.mp4")
         await normalizar_video_para_browser(video_path, video_normalizado, forcar_reencode=eh_tiktok_url(dados.url))
         resultado = await _pipeline(video_normalizado, job_id, tasks, pasta_temp, config)
@@ -1465,5 +1514,8 @@ async def health():
             "supabase_auth": "ok" if supabase else "ausente",
             "supabase_storage": "ok" if supabase_admin else "ausente (SUPABASE_SERVICE_KEY)",
             "max_duracao_s": MAX_DURACAO_S,
+            "modo_rapido_apresentacao": PROCESSAMENTO_RAPIDO_APRESENTACAO,
+            "max_trecho_processamento_s": MAX_TRECHO_PROCESSAMENTO_S,
+            "modelo_analise": OPENAI_MODELO_ANALISE,
         },
     }

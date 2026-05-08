@@ -40,15 +40,19 @@
             <div class="nav-items" id="navItems">
                 <button type="button" onclick="mudarAba('inicio')" class="nav-item active" data-aba="inicio">
                     <span><img src="assets/img/home.svg" alt="Início" class="nav-icon"></span>
+                    <span class="nav-item-text">Início</span>
                 </button>
                 <button type="button" onclick="mudarAba('conteudos')" class="nav-item" data-aba="conteudos">
                     <span><img src="assets/img/content.svg" alt="Conteúdos" class="nav-icon"></span>
+                    <span class="nav-item-text">Conteúdos</span>
                 </button>
                 <button type="button" onclick="mudarAba('ferramentas')" class="nav-item" data-aba="ferramentas">
                     <span><img src="assets/img/bolt.svg" alt="Utilitários" class="nav-icon"></span>
+                    <span class="nav-item-text">Utilitários</span>
                 </button>
                 <button type="button" onclick="mudarAba('configs')" class="nav-item" data-aba="configs">
                     <span><img src="assets/img/settings.svg" alt="Config" class="nav-icon"></span>
+                    <span class="nav-item-text">Config</span>
                 </button>
                 <button type="button" id="btn-logout-mobile" class="nav-item nav-item-logout" title="Sair">
                     <span>
@@ -233,12 +237,12 @@
                     <label class="input-label">URL do Vídeo</label>
                     <input type="url" id="input-youtube" class="input-field"
                         placeholder="https://youtube.com/watch?v=..." autocomplete="off">
-                    <button id="btn-yt-processar" onclick="processarLink('youtube')"
+                    <button type="button" id="btn-yt-processar" onclick="processarLink('youtube')"
                         class="btn-plataforma btn-yt-processar">
                         Processar
                     </button>
                     <div class="yt-divider">ou</div>
-                    <button id="btn-yt-baixar" onclick="baixarLink('youtube')" class="btn-plataforma btn-baixar-link">
+                    <button type="button" id="btn-yt-baixar" onclick="baixarLink('youtube')" class="btn-plataforma btn-baixar-link">
                         Baixar (MP4)
                     </button>
                 </div>
@@ -261,12 +265,12 @@
                     <label class="input-label">URL do Vídeo</label>
                     <input type="url" id="input-tiktok" class="input-field"
                         placeholder="https://tiktok.com/@user/video/..." autocomplete="off">
-                    <button id="btn-tt-processar" onclick="processarLink('tiktok')"
+                    <button type="button" id="btn-tt-processar" onclick="processarLink('tiktok')"
                         class="btn-plataforma btn-tt-processar">
                         Processar
                     </button>
                     <div class="yt-divider">ou</div>
-                    <button id="btn-tt-baixar" onclick="baixarLink('tiktok')" class="btn-plataforma btn-baixar-link">
+                    <button type="button" id="btn-tt-baixar" onclick="baixarLink('tiktok')" class="btn-plataforma btn-baixar-link">
                         Baixar (MP4)
                     </button>
                 </div>
