@@ -7,7 +7,7 @@
    ============================================================ */
 
 const API = window.CONFIG?.API_URL ?? '';
-const TIMEOUT = 150 * 1000;
+const TIMEOUT = 5 * 60 * 1000;
 
 const $ = id => document.getElementById(id);
 
@@ -439,11 +439,11 @@ async function _executar(fetchFn) {
 
     const etapas = [
         { p: 10, m: 'Enviando para o servidor...', d: 0 },
-        { p: 25, m: 'Preparando mídia para apresentação...', d: 4000 },
-        { p: 50, m: 'Whisper transcrevendo o trecho...', d: 12000 },
-        { p: 70, m: 'IA avaliando o conteúdo...', d: 24000 },
-        { p: 85, m: 'Selecionando recortes por foco...', d: 45000 },
-        { p: 93, m: 'Renderizando os cortes...', d: 70000 },
+        { p: 25, m: 'FFmpeg extraindo áudio...', d: 5000 },
+        { p: 50, m: 'Whisper transcrevendo...', d: 12000 },
+        { p: 70, m: 'IA avaliando o vídeo inteiro...', d: 22000 },
+        { p: 85, m: 'Selecionando recortes por foco...', d: 32000 },
+        { p: 93, m: 'Renderizando os cortes...', d: 42000 },
     ];
     const tids = etapas.map(({ p, m, d }) => setTimeout(() => { pct(p); msg(m); }, d));
 
@@ -479,7 +479,7 @@ async function _executar(fetchFn) {
     } catch (err) {
         clearTimeout(tId); tids.forEach(clearTimeout); stopTimer();
         const m_ = err.name === 'AbortError'
-            ? 'Timeout: processamento demorou mais de 2min30.'
+            ? 'Timeout: processamento demorou mais de 5 minutos.'
             : `${err.message || 'Erro desconhecido.'}`;
         msg(m_, '#ef4444');
         if (barraP) barraP.style.background = '#ef4444';
