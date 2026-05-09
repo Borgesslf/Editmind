@@ -43,6 +43,7 @@ const profileSenha = $('profile-senha');
 const profileFeedback = $('profile-feedback');
 
 window.ultimoResultado = null;
+window.previewSelecionados = new Set();
 window.meusCortes = [];
 window.selectedCortes = new Set();
 
@@ -367,6 +368,7 @@ async function processarLinkGenerico(inputId, btnId, nomeFonte) {
     if (btn) { btn.disabled = true; btn.textContent = 'Processando...'; }
 
     const config = coletarConfigProcessamento();
+    try {
     await _executar(async (ctrl) =>
         fetch(`${API}/api/processar-link`, {
             method: 'POST',
@@ -376,8 +378,10 @@ async function processarLinkGenerico(inputId, btnId, nomeFonte) {
         })
     );
 
-    if (btn) { btn.textContent = 'Processar'; btn.disabled = false; }
-    if (input) input.value = '';
+    } finally {
+        if (btn) { btn.textContent = 'Processar'; btn.disabled = false; }
+        if (input) input.value = '';
+    }
 }
 
 window.processarYouTube = () => processarLinkGenerico('input-youtube', 'btn-yt-processar', 'YouTube');
@@ -521,7 +525,7 @@ function exibirResultado(data) {
 
     const area = $('area-download');
     if (!area) return;
-    area.innerHTML = cortes.map((corte, idx) => renderCorteResultado(corte, idx)).join('');
+    area.innerHTML = cortes.map((corte, idx) => renderCorteResultado(corte, idx)).join('') + '<div class="result-btns"><button type="button" id="btn-confirmar-cortes" class="btn-upload">Salvar cortes selecionados</button></div>';
 }
 
 function renderCorteResultado(corte, idx) {
@@ -546,6 +550,7 @@ function renderCorteResultado(corte, idx) {
             <p class="resultado-motivo">${escaparHtml(corte.motivo || 'Trecho viral identificado.')}</p>
             <div class="result-btns">
                 <button type="button" class="btn-assistir btn-play-inline">Assistir</button>
+                <label><input type="checkbox" class="preview-select" data-index="${corte.index || idx+1}" checked> Salvar</label>
                 <button type="button" class="btn-download btn-download-video" data-url="${urlCorte}">Baixar MP4</button>
             </div>
         </article>
@@ -559,6 +564,7 @@ window.resetarNovoCorte = function () {
         if (painelUpload) painelUpload.classList.remove('hidden');
         resetUI();
         window.ultimoResultado = null;
+window.previewSelecionados = new Set();
     }, 400);
 };
 
@@ -844,5 +850,37 @@ document.addEventListener('click', (event) => {
         if (cb.checked) window.selectedCortes.add(id);
         else window.selectedCortes.delete(id);
         atualizarContadorSelecao();
+    }
+});
+
+
+document.addEventListener('change', (e) => {
+    if (!e.target.classList.contains('preview-select')) return;
+    const idx = Number(e.target.dataset.index);
+    if (e.target.checked) window.previewSelecionados.add(idx); else window.previewSelecionados.delete(idx);
+});
+
+document.addEventListener('click', async (e) => {
+    if (e.target.id !== 'btn-confirmar-cortes') return;
+    const btn = e.target;
+    const projectId = window.ultimoResultado?.project?.project_id;
+    if (!projectId) return alert('Projeto não encontrado para salvar.');
+    const selected = [...document.querySelectorAll('.preview-select:checked')].map(x => Number(x.dataset.index));
+    if (!selected.length) return alert('Selecione ao menos um corte.');
+    btn.disabled = true; btn.textContent = 'Salvando cortes selecionados...';
+    msg('Salvando cortes selecionados...', '#f97316');
+    try {
+        const res = await fetch(`${API}/api/projetos/${projectId}/confirmar-cortes`, {
+            method: 'POST',
+            headers: getAuthHeaders({'Content-Type':'application/json'}),
+            body: JSON.stringify({ selected_indexes: selected }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || 'Erro ao salvar cortes.');
+        msg('Cortes salvos com sucesso.', '#22c55e');
+        btn.textContent = 'Cortes salvos';
+    } catch(err){
+        msg(`Erro ao gerar/salvar: ${err.message || 'falha'}`, '#ef4444');
+        btn.disabled = false; btn.textContent = 'Salvar cortes selecionados';
     }
 });

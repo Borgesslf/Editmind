@@ -77,6 +77,12 @@ STORAGE_BUCKET = "cortes"
 OUTPUT_DIR = Path("outputs")
 OUTPUT_DIR.mkdir(exist_ok=True)
 
+OUTPUT_TEMP_DIR = OUTPUT_DIR / "temp"
+OUTPUT_PROJECTS_DIR = OUTPUT_DIR / "projects"
+for _d in (OUTPUT_TEMP_DIR, OUTPUT_PROJECTS_DIR):
+    _d.mkdir(parents=True, exist_ok=True)
+
+
 EXTS_VALIDAS = {".mp4", ".mov", ".avi", ".webm"}
 DOMINIOS_SUPORTADOS = {"youtube.com", "www.youtube.com", "youtu.be", "tiktok.com", "www.tiktok.com", "vm.tiktok.com"}
 
@@ -945,7 +951,7 @@ async def _atualizar_auth_user(token: str, payload: dict) -> dict:
 # PIPELINE CENTRAL
 # ══════════════════════════════════════════════════════════════
 
-async def _pipeline(video_path: str, job_id: str, tasks: BackgroundTasks, pasta_temp: Path, config: ProcessamentoConfig) -> dict:
+async def _pipeline(video_path: str, job_id: str, tasks: BackgroundTasks, pasta_temp: Path, config: ProcessamentoConfig, project_id: str, persist: bool = False) -> dict:
     metadados = await obter_metadados(video_path)
     duracao = float(metadados["duracao_segundos"])
     logger.info(f"Job {job_id} | metadados: {metadados}")
@@ -971,14 +977,16 @@ async def _pipeline(video_path: str, job_id: str, tasks: BackgroundTasks, pasta_
     for analise in analises:
         idx = analise["index"]
         nome_saida = f"corte_{job_id}_{idx}.mp4" if len(analises) > 1 else f"corte_{job_id}.mp4"
-        caminho_local = str(OUTPUT_DIR / nome_saida)
+        base_dir = (OUTPUT_PROJECTS_DIR / project_id / "cuts") if persist else (OUTPUT_TEMP_DIR / project_id)
+        base_dir.mkdir(parents=True, exist_ok=True)
+        caminho_local = str(base_dir / nome_saida)
         logger.info(f"Job {job_id} | cortando recorte {idx}: {analise['inicio']}s → {analise['fim']}s")
         await cortar_video(video_path, caminho_local, analise["inicio"], analise["fim"], config.formato_vertical)
 
-        url_publica = await upload_storage(caminho_local, nome_saida)
+        url_publica = None if not persist else await upload_storage(caminho_local, nome_saida)
         if url_publica:
             tasks.add_task(lambda p=caminho_local: Path(p).unlink(missing_ok=True))
-        url_corte = url_publica or f"/outputs/{nome_saida}"
+        url_corte = url_publica or (f"/outputs/projects/{project_id}/cuts/{nome_saida}" if persist else f"/outputs/temp/{project_id}/{nome_saida}")
 
         corte_info = {
             "index": idx,
@@ -1024,6 +1032,42 @@ async def _salvar_cortes_do_resultado(usuario: dict, titulo_base: str, resultado
         if registro and registro.get("id"):
             corte["id"] = registro.get("id")
     return resultado
+
+
+def _project_file(project_id: str) -> Path:
+    return OUTPUT_PROJECTS_DIR / project_id / "original_info.json"
+
+
+def _load_project(project_id: str) -> dict:
+    pf = _project_file(project_id)
+    if not pf.exists():
+        raise HTTPException(404, "Projeto não encontrado.")
+    return json.loads(pf.read_text(encoding="utf-8"))
+
+
+def _save_project(project: dict) -> None:
+    project_id = str(project.get("project_id") or "").strip()
+    if not project_id:
+        raise HTTPException(400, "project_id inválido")
+    base = OUTPUT_PROJECTS_DIR / project_id
+    (base / "cuts").mkdir(parents=True, exist_ok=True)
+    project["project_path"] = f"/outputs/projects/{project_id}"
+    (_project_file(project_id)).write_text(json.dumps(project, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
+def _create_project(original_name: str, source: str, owner: str) -> dict:
+    project_id = str(uuid.uuid4())[:8]
+    data = {
+        "project_id": project_id,
+        "original_title": original_name,
+        "source": source,
+        "created_at": __import__('datetime').datetime.utcnow().isoformat() + "Z",
+        "owner": owner,
+        "cuts": [],
+    }
+    _save_project(data)
+    return data
+
 
 
 # ══════════════════════════════════════════════════════════════
@@ -1163,8 +1207,10 @@ async def processar_video(
                     raise HTTPException(413, f"Arquivo muito grande. Máx {MAX_BYTES // 1024 // 1024}MB.")
                 f_out.write(chunk)
 
-        resultado = await _pipeline(str(video_path), job_id, tasks, pasta_temp, config)
-        resultado = await _salvar_cortes_do_resultado(usuario, file.filename or f"upload_{job_id}", resultado)
+        projeto = _create_project(file.filename or f"upload_{job_id}", "upload", usuario.get("email") or usuario.get("id") or "anon")
+        resultado = await _pipeline(str(video_path), job_id, tasks, pasta_temp, config, projeto["project_id"], persist=False)
+        resultado["project"] = projeto
+        resultado["status"] = "preview_pronto"
         return JSONResponse(resultado)
     except HTTPException:
         shutil.rmtree(pasta_temp, ignore_errors=True)
@@ -1186,8 +1232,11 @@ async def processar_link(tasks: BackgroundTasks, dados: LinkRequest, usuario: di
         await _ytdlp_download(dados.url, video_path)
         video_normalizado = str(pasta_temp / "video_browser.mp4")
         await normalizar_video_para_browser(video_path, video_normalizado, forcar_reencode=eh_tiktok_url(dados.url))
-        resultado = await _pipeline(video_normalizado, job_id, tasks, pasta_temp, config)
-        resultado = await _salvar_cortes_do_resultado(usuario, dados.url, resultado)
+        origem = "youtube" if eh_youtube_url(dados.url) else ("tiktok" if eh_tiktok_url(dados.url) else "link")
+        projeto = _create_project(dados.url, origem, usuario.get("email") or usuario.get("id") or "anon")
+        resultado = await _pipeline(video_normalizado, job_id, tasks, pasta_temp, config, projeto["project_id"], persist=False)
+        resultado["project"] = projeto
+        resultado["status"] = "preview_pronto"
         return JSONResponse(resultado)
     except asyncio.TimeoutError:
         shutil.rmtree(pasta_temp, ignore_errors=True)
@@ -1248,6 +1297,59 @@ async def download_link(tasks: BackgroundTasks, dados: LinkRequest, usuario: dic
 async def download_youtube(tasks: BackgroundTasks, dados: YouTubeRequest, usuario: dict = Depends(get_current_user)):
     req = LinkRequest(url=dados.url)
     return await download_link(tasks, req, usuario)
+
+
+
+class ConfirmarCortesRequest(BaseModel):
+    selected_indexes: list[int] = Field(default_factory=list)
+
+
+@app.post("/api/projetos/{project_id}/confirmar-cortes")
+async def confirmar_cortes(project_id: str, dados: ConfirmarCortesRequest, usuario: dict = Depends(get_current_user)):
+    projeto = _load_project(project_id)
+    owner = usuario.get("email") or usuario.get("id")
+    if projeto.get("owner") != owner:
+        raise HTTPException(403, "Projeto não pertence ao usuário autenticado.")
+    temp_dir = OUTPUT_TEMP_DIR / project_id
+    if not temp_dir.exists():
+        raise HTTPException(404, "Pré-visualizações temporárias não encontradas.")
+    selected = set(int(i) for i in dados.selected_indexes or [])
+    persisted = []
+    for path in sorted(temp_dir.glob("*.mp4")):
+        m = re.search(r"_(\d+)\.mp4$", path.name)
+        idx = int(m.group(1)) if m else 1
+        if idx not in selected:
+            continue
+        destino = OUTPUT_PROJECTS_DIR / project_id / "cuts" / path.name
+        destino.parent.mkdir(parents=True, exist_ok=True)
+        shutil.move(str(path), str(destino))
+        corte = {"index": idx, "video_url": f"/outputs/projects/{project_id}/cuts/{path.name}", "criado_em": __import__('datetime').datetime.utcnow().isoformat()+"Z"}
+        persisted.append(corte)
+        projeto.setdefault("cuts", []).append(corte)
+    shutil.rmtree(temp_dir, ignore_errors=True)
+    _save_project(projeto)
+    return {"sucesso": True, "project_id": project_id, "saved_cuts": persisted, "project": projeto}
+
+
+@app.get("/api/projetos")
+async def listar_projetos(usuario: dict = Depends(get_current_user)):
+    owner = usuario.get("email") or usuario.get("id")
+    projetos = []
+    for meta in OUTPUT_PROJECTS_DIR.glob("*/original_info.json"):
+        data = json.loads(meta.read_text(encoding="utf-8"))
+        if data.get("owner") == owner:
+            projetos.append(data)
+    projetos.sort(key=lambda x: x.get("created_at", ""), reverse=True)
+    return {"sucesso": True, "projetos": projetos}
+
+
+@app.get("/api/projetos/{project_id}")
+async def detalhe_projeto(project_id: str, usuario: dict = Depends(get_current_user)):
+    projeto = _load_project(project_id)
+    owner = usuario.get("email") or usuario.get("id")
+    if projeto.get("owner") != owner:
+        raise HTTPException(403, "Projeto não pertence ao usuário autenticado.")
+    return {"sucesso": True, "projeto": projeto}
 
 
 # ══════════════════════════════════════════════════════════════

@@ -2637,3 +2637,23 @@ select {
         min-height: 380px;
     }
 }
+
+/* --- Hotfix navbar responsiva + selects visíveis --- */
+html, body { overflow-x: hidden; }
+.select-field {
+    color: #f3f4f6;
+    background: #111827;
+    border-color: rgba(255, 255, 255, .18);
+}
+.select-field option {
+    color: #f3f4f6;
+    background: #111827;
+}
+@media (max-width: 768px) {
+  .header { display:flex; align-items:center; gap:10px; flex-wrap:nowrap; }
+  .header-user { min-width:0; flex:1; }
+  .header-user-name { max-width: 120px; }
+  .btn-nav { margin-left:auto; position: relative; }
+  .btn-nav .nav-items { max-width: calc(100vw - 24px); right: 0; left: auto; }
+  .nav-item { min-width:44px; min-height:44px; }
+}
