@@ -1,0 +1,252 @@
+EditMind v5.2 — Documento de Contexto
+
+1) Objetivo principal
+O EditMind é uma plataforma SaaS para transformar vídeos longos em recortes curtos com foco em viralização (Shorts, Reels e TikTok), usando IA para transcrição e seleção de trechos.
+
+2) Funcionalidades atuais
+- Cadastro, login, esqueci senha e redefinição de senha.
+- Perfil do usuário (nome, e-mail e senha).
+- Upload de vídeo local.
+- Processamento por link (YouTube/TikTok).
+- Até 3 recortes por job com foco e duração por recorte.
+- Opção de formato vertical 9:16 sem achatar.
+- Histórico de recortes.
+- Download individual, exclusão individual, exclusão em massa e download em ZIP.
+
+3) Front-end
+- HTML/CSS/JS puro (sem framework SPA).
+- Arquivos principais:
+  - frontend/home.html (landing)
+  - frontend/index.html (app)
+  - frontend/login.html / cadastro.html / esqueci-senha.html / redefinir-senha.html
+- JS principal:
+  - frontend/js/config.js: URL da API e chaves públicas.
+  - frontend/js/auth.js: sessão e autenticação.
+  - frontend/js/app.js: fluxo da aplicação (upload/link, configurações, histórico, perfil).
+
+4) Back-end
+- API FastAPI em main.py.
+- CORS configurável + handler explícito de OPTIONS.
+- Auth via Bearer token validado no Supabase.
+- Pipeline:
+  1. Entrada (upload/link)
+  2. Download/normalização (yt-dlp + FFmpeg)
+  3. Extração de áudio
+  4. Transcrição com Whisper
+  5. Análise de cortes com GPT
+  6. Geração dos recortes com FFmpeg
+  7. Persistência/histórico no Supabase + suporte a outputs locais.
+
+5) Endpoints da API
+Auth
+- POST /api/auth/cadastro
+- POST /api/auth/login
+- POST /api/auth/esqueci-senha
+- POST /api/auth/redefinir-senha
+
+Perfil
+- GET /api/user/profile
+- PATCH /api/user/profile/name
+- PATCH /api/user/profile/email
+- PATCH /api/user/profile/password
+
+Processamento
+- POST /api/processar
+- POST /api/processar-link
+- POST /api/processar-youtube
+- POST /api/download-link
+- POST /api/download-youtube
+
+Projetos/Prévia
+- POST /api/projetos/{project_id}/confirmar-cortes
+- GET /api/projetos
+- GET /api/projetos/{project_id}
+
+Histórico
+- GET /api/meus-cortes
+- GET /api/cortes/download
+- DELETE /api/cortes/{corte_id}
+- POST /api/cortes/bulk-delete
+- POST /api/cortes/bulk-download
+
+Infra
+- OPTIONS /{rest_of_path:path}
+- GET /
+
+6) Arquivos mais importantes
+- main.py: núcleo do backend.
+- README.md: visão geral e setup.
+- requirements.txt: dependências.
+- Dockerfile: imagem de produção.
+- render.yaml: serviço no Render.
+- vercel.json e frontend/vercel.json: rotas frontend.
+- supabase_cortes.sql: schema/policies de cortes.
+- supabase_profiles_v5_2.sql: schema/policies de profiles.
+
+7) Tecnologias e serviços
+- FastAPI, Uvicorn, Pydantic.
+- OpenAI (whisper-1, gpt-4o, gpt-4o-mini).
+- FFmpeg/ffprobe.
+- yt-dlp.
+- Supabase (Auth, Postgres, Storage).
+- httpx.
+- Deploy: Render + Vercel.
+
+8) Fluxo completo do usuário
+1. Usuário autentica.
+2. Escolhe upload local ou link.
+3. Define recortes (qtd, foco, duração, vertical).
+4. Backend processa e retorna prévias.
+5. Usuário confirma recortes.
+6. Recortes aparecem no histórico.
+7. Usuário baixa/exclui individualmente ou em lote.
+
+9) Rodar localmente
+Backend
+- python -m venv .venv
+- source .venv/bin/activate
+- pip install -r requirements.txt
+- uvicorn main:app --reload --host 0.0.0.0 --port 8000
+
+Frontend
+- Servidor estático em frontend/ (ex.: python -m http.server 5500)
+
+10) Deploy
+- Backend no Render (Docker recomendado).
+- Frontend na Vercel (root / com vercel.json da raiz, ou root frontend/ com frontend/vercel.json).
+- Supabase com bucket cortes + SQLs aplicados.
+
+11) Variáveis de ambiente
+Backend
+- OPENAI_API_KEY
+- SUPABASE_URL
+- SUPABASE_KEY
+- SUPABASE_SERVICE_KEY
+- SITE_URL
+- MAX_DURACAO_S (opcional)
+- MAX_BYTES (opcional)
+- YTDLP_COOKIES_FILE (opcional)
+- YTDLP_EXTRACTOR_ARGS (opcional)
+- CORS_ORIGINS (opcional)
+
+Frontend
+- API_URL
+- SUPABASE_URL
+- SUPABASE_ANON_KEY
+
+12) Limitações / partes incompletas
+- Render Free pode limitar vídeos longos (timeout/CPU).
+- Bloqueios anti-bot em YouTube/TikTok podem afetar downloads.
+- config.js exige configuração manual de ambiente.
+- main.py concentra muitas responsabilidades (ponto claro para modularização futura).
+
+13) O que outro chat precisa saber antes de ajudar
+- O backend é altamente centralizado em main.py.
+- O frontend é vanilla e depende de chamadas diretas à API.
+- Mudanças em auth/pipeline afetam várias áreas.
+- Em deploy real, integração externa (Supabase/OpenAI/ffmpeg/yt-dlp) é essencial.
+
+PROMPT MESTRE (copiar e colar em outro chat)
+"""
+Você vai me ajudar no projeto EditMind. Antes de sugerir mudanças, use este contexto como verdade inicial:
+
+[PROJETO]
+- Nome: EditMind v5.2.
+- Objetivo: transformar vídeos longos em recortes curtos virais (Shorts/Reels/TikTok) com IA.
+- Stack:
+  - Backend: FastAPI (Python)
+  - IA: OpenAI Whisper + GPT
+  - Mídia: FFmpeg/ffprobe
+  - Download de links: yt-dlp
+  - Auth/DB/Storage: Supabase
+  - Deploy: Render (API) + Vercel (frontend)
+- Frontend: HTML/CSS/JS vanilla.
+
+[FUNCIONALIDADES]
+- Cadastro, login, esqueci senha, redefinição de senha.
+- Perfil: ver/editar nome, email, senha.
+- Upload de vídeo local.
+- Processamento por link YouTube/TikTok.
+- Até 3 recortes por processamento.
+- Configuração por recorte: foco + duração (curto/médio/longo).
+- Opção vertical 9:16 sem distorção.
+- Histórico de recortes.
+- Download individual real.
+- Exclusão individual e em massa.
+- Download em massa ZIP.
+
+[ARQUIVOS-CHAVE]
+- main.py: backend completo (rotas, auth, pipeline IA, FFmpeg, Supabase).
+- frontend/js/app.js: lógica principal da UI.
+- frontend/js/auth.js: sessão/token/auth.
+- frontend/js/config.js: URL API + chaves públicas Supabase.
+- requirements.txt, Dockerfile, render.yaml: backend/deploy.
+- vercel.json e frontend/vercel.json: rotas frontend.
+- supabase_cortes.sql e supabase_profiles_v5_2.sql: banco e policies.
+
+[ROTAS DA API]
+Auth:
+- POST /api/auth/cadastro
+- POST /api/auth/login
+- POST /api/auth/esqueci-senha
+- POST /api/auth/redefinir-senha
+
+Perfil:
+- GET /api/user/profile
+- PATCH /api/user/profile/name
+- PATCH /api/user/profile/email
+- PATCH /api/user/profile/password
+
+Processamento:
+- POST /api/processar
+- POST /api/processar-link
+- POST /api/processar-youtube
+- POST /api/download-link
+- POST /api/download-youtube
+
+Projetos/Prévia:
+- POST /api/projetos/{project_id}/confirmar-cortes
+- GET /api/projetos
+- GET /api/projetos/{project_id}
+
+Histórico:
+- GET /api/meus-cortes
+- GET /api/cortes/download
+- DELETE /api/cortes/{corte_id}
+- POST /api/cortes/bulk-delete
+- POST /api/cortes/bulk-download
+
+Infra:
+- OPTIONS /* (preflight)
+- GET / (healthcheck)
+
+[FLUXO DO USUÁRIO]
+1) Usuário autentica.
+2) Escolhe upload local ou link.
+3) Define quantidade de recortes, foco e duração.
+4) Backend processa (download/normalização -> transcrição -> análise IA -> cortes).
+5) Usuário visualiza prévias e confirma recortes.
+6) Salva no histórico.
+7) Pode baixar/excluir individualmente ou em lote.
+
+[AMBIENTE E DEPLOY]
+- Backend exige OPENAI_API_KEY, SUPABASE_URL, SUPABASE_KEY, SUPABASE_SERVICE_KEY, SITE_URL.
+- Opcional: MAX_DURACAO_S, MAX_BYTES, YTDLP_COOKIES_FILE, YTDLP_EXTRACTOR_ARGS, CORS_ORIGINS.
+- Frontend exige API_URL e dados públicos Supabase.
+- Render com Dockerfile (FFmpeg + yt-dlp).
+- Vercel com rotas amigáveis para páginas estáticas.
+
+[LIMITAÇÕES CONHECIDAS]
+- Render Free pode dar timeout em vídeos longos.
+- YouTube/TikTok podem bloquear automação.
+- Configuração frontend atualmente é manual em config.js.
+- Backend concentrado em main.py (alta complexidade).
+
+[COMO VOCÊ DEVE ME AJUDAR]
+- Sempre proponha mudanças pequenas e seguras primeiro.
+- Ao sugerir código, indique impacto em backend/frontend/deploy.
+- Se for refactor, priorize modularização progressiva de main.py.
+- Se envolver API, já considere autenticação Bearer + Supabase.
+- Se envolver processamento de vídeo, preserve compatibilidade MP4/H.264/AAC.
+- Responda em português, objetivo, com passos executáveis.
+"""
