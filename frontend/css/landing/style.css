@@ -1,0 +1,221 @@
+/* ============================================================
+   EditMind — css/landing/style.css
+   Mobile-First v7
+   ============================================================ */
+
+body.landing {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow-x: hidden;
+}
+
+.landing .header {
+    flex-shrink: 0;
+}
+
+/* ── MAIN ─────────────────────────────────────────────────── */
+.landing-main {
+    flex: 1;
+    width: 100%;
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 24px 16px 48px;
+}
+
+/* ── HERO ─────────────────────────────────────────────────── */
+.landing-hero {
+    text-align: center;
+    padding: 40px 0 56px;
+}
+
+.landing-badge {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: #f97316;
+    margin-bottom: 22px;
+    padding: 7px 16px;
+    border: 1px solid rgba(249, 115, 22, 0.4);
+    border-radius: 999px;
+    background: rgba(249, 115, 22, 0.06);
+}
+
+.landing-title {
+    font-size: clamp(2rem, 8vw, 3.5rem);
+    font-weight: 900;
+    color: white;
+    line-height: 1.15;
+    margin-bottom: 20px;
+    letter-spacing: -1px;
+    word-break: break-word;
+}
+
+.landing-title-accent {
+    color: #f97316;
+}
+
+.landing-lead {
+    font-size: clamp(0.9rem, 3.5vw, 1.05rem);
+    color: #9ca3af;
+    line-height: 1.7;
+    max-width: 540px;
+    margin: 0 auto 32px;
+    padding: 0 4px;
+}
+
+/* ── CTA BUTTON ───────────────────────────────────────────── */
+.btn-landing-cta {
+    display: inline-block;
+    width: 100%;
+    max-width: 340px;
+    padding: 16px 32px;
+    background: #f97316;
+    color: white;
+    font-size: 13px;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+    text-decoration: none;
+    border-radius: 999px;
+    border: none;
+    cursor: pointer;
+    text-align: center;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    box-shadow: 0 8px 32px rgba(249, 115, 22, 0.3);
+}
+
+.btn-landing-cta:hover {
+    transform: scale(1.04);
+    box-shadow: 0 12px 40px rgba(249, 115, 22, 0.45);
+}
+
+/* ── FEATURES ─────────────────────────────────────────────── */
+.landing-features {
+    padding: 32px 0 56px;
+}
+
+.landing-section-title {
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: #4b5563;
+    text-align: center;
+    margin-bottom: 28px;
+}
+
+.landing-feature-list {
+    list-style: none;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 16px;
+}
+
+.landing-feature-card {
+    background: rgba(10, 10, 12, 0.7);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 20px;
+    padding: 22px 20px;
+    backdrop-filter: blur(20px);
+    transition: border-color 0.3s ease, transform 0.3s ease;
+}
+
+.landing-feature-card:hover {
+    border-color: rgba(249, 115, 22, 0.4);
+    transform: translateY(-3px);
+}
+
+.landing-feature-num {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    font-size: 13px;
+    font-weight: 900;
+    color: #f97316;
+    background: rgba(249, 115, 22, 0.12);
+    border-radius: 10px;
+    margin-bottom: 14px;
+    flex-shrink: 0;
+}
+
+.landing-feature-title {
+    font-size: 16px;
+    font-weight: 800;
+    color: white;
+    margin-bottom: 8px;
+}
+
+.landing-feature-desc {
+    font-size: 14px;
+    color: #6b7280;
+    line-height: 1.6;
+}
+
+/* ── CTA BLOCK ────────────────────────────────────────────── */
+.landing-cta-block {
+    text-align: center;
+    padding: 40px 20px;
+    background: rgba(10, 10, 12, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 20px;
+    backdrop-filter: blur(20px);
+}
+
+.landing-cta-title {
+    font-size: clamp(1.4rem, 5vw, 2rem);
+    font-weight: 900;
+    color: white;
+    margin-bottom: 12px;
+    letter-spacing: -0.5px;
+    word-break: break-word;
+}
+
+.landing-cta-desc {
+    font-size: 14px;
+    color: #6b7280;
+    margin-bottom: 24px;
+    line-height: 1.6;
+}
+
+/* ── FOOTER ───────────────────────────────────────────────── */
+.landing-footer {
+    flex-shrink: 0;
+    text-align: center;
+    padding: 24px 16px;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.landing-footer-text {
+    font-size: 12px;
+    color: #374151;
+    letter-spacing: 0.05em;
+}
+
+/* SM — 481px+ */
+@media (min-width: 481px) {
+    .landing-main { padding: 28px 24px 56px; }
+    .landing-hero { padding: 56px 0 72px; }
+    .btn-landing-cta { width: auto; }
+}
+
+/* MD — 640px+ (features 3 colunas) */
+@media (min-width: 640px) {
+    .landing-main { padding: 32px 32px 64px; }
+    .landing-feature-list { grid-template-columns: repeat(3, 1fr); }
+    .landing-features { padding: 40px 0 64px; }
+    .landing-cta-block { padding: 56px 40px; }
+}
+
+/* LG — 769px+ */
+@media (min-width: 769px) {
+    .landing-main { padding: 40px 24px 72px; }
+    .landing-hero { padding: 72px 0 96px; }
+    .landing-feature-card { padding: 28px; }
+    .landing-cta-block { padding: 64px 48px; }
+    .landing-features { padding: 40px 0 72px; }
+    .landing-footer { padding: 28px 24px; }
+}

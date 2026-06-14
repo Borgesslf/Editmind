@@ -1,0 +1,17 @@
+.env
+.env.*
+!.env.example
+__pycache__/
+*.pyc
+*.pyo
+.git/
+.gitignore
+outputs/
+*.mp4
+*.mov
+*.avi
+*.webm
+*.mp3
+node_modules/
+.DS_Store
+Thumbs.db

@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EditMind — Studio</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="./css/style.css">
+</head>
+
+<body>
+    <header class="header">
+        <a href="home.html" class="logo">
+            <h1 class="logoEDIT">EDIT<span class="logoMIND">MIND</span></h1>
+        </a>
+
+        <div class="header-user">
+            <span id="user-nome" class="header-user-name"></span>
+            <button type="button" id="btn-logout" class="btn-logout-desktop" title="Sair">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                    <polyline points="16 17 21 12 16 7" />
+                    <line x1="21" y1="12" x2="9" y2="12" />
+                </svg>
+                Sair
+            </button>
+        </div>
+
+        <nav class="btn-nav" id="btnNav">
+            <button type="button" class="nav-toggle" id="navToggle" aria-label="Menu" aria-expanded="false"
+                aria-controls="navItems">
+                <span class="menu-icon-wrapper">
+                    <span class="menu-icon-line first"></span>
+                    <span class="menu-icon-line middle"></span>
+                    <span class="menu-icon-line last"></span>
+                </span>
+            </button>
+            <div class="nav-items" id="navItems">
+                <button type="button" onclick="mudarAba('inicio')" class="nav-item active" data-aba="inicio">
+                    <span><img src="assets/img/home.svg" alt="Início" class="nav-icon"></span>
+                </button>
+                <button type="button" onclick="mudarAba('conteudos')" class="nav-item" data-aba="conteudos">
+                    <span><img src="assets/img/content.svg" alt="Conteúdos" class="nav-icon"></span>
+                </button>
+                <button type="button" onclick="mudarAba('ferramentas')" class="nav-item" data-aba="ferramentas">
+                    <span><img src="assets/img/bolt.svg" alt="Utilitários" class="nav-icon"></span>
+                </button>
+                <button type="button" onclick="mudarAba('configs')" class="nav-item" data-aba="configs">
+                    <span><img src="assets/img/settings.svg" alt="Config" class="nav-icon"></span>
+                </button>
+                <button type="button" id="btn-logout-mobile" class="nav-item nav-item-logout" title="Sair">
+                    <span>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                            <polyline points="16 17 21 12 16 7" />
+                            <line x1="21" y1="12" x2="9" y2="12" />
+                        </svg>
+                    </span>
+                </button>
+            </div>
+        </nav>
+    </header>
+
+    <main class="main-container">
+        <section id="aba-inicio" class="section active">
+            <div class="section-header">
+                <h2 class="title">Novo Projeto</h2>
+                <p class="subtitle">Envie um vídeo e configure até três recortes com focos diferentes.</p>
+            </div>
+
+            <div id="painel-upload" class="tools-grid">
+                <div class="upload-column">
+                    <div id="area-soltar" class="tool-bentoCard upload-card">
+                        <img src="assets/img/newVideo.svg" alt="upload" class="upload-icon">
+                        <h3 class="upload-title">Arrastar mídia</h3>
+                        <p class="upload-subtitle">Suporta MP4, MOV, AVI e WEBM. Limite seguro padrão: 3 minutos.</p>
+                        <input type="file" id="entrada-arquivo" class="hidden-input"
+                            accept="video/mp4,video/quicktime,video/avi,video/webm">
+                        <button type="button" onclick="document.getElementById('entrada-arquivo').click()"
+                            class="btn-upload">
+                            Selecionar Arquivo
+                        </button>
+                        <a href="assets/video_teste_15s.mp4" download class="upload-link">
+                            Baixar vídeo de teste
+                        </a>
+                    </div>
+
+
+                </div>
+
+                <div class="status-column">
+                    <div id="status-envio" class="tool-bentoCard status-card">
+                        <div class="status-header">
+                            <span class="status-label">Engine Status</span>
+                            <div class="status-metrics">
+                                <span id="porcentagem-envio" class="status-percentage">0%</span>
+                                <span id="timer-display" class="status-timer">00:00</span>
+                            </div>
+                        </div>
+                        <span id="nome-arquivo" class="status-file">Aguardando feed...</span>
+                        <div class="progress-bar">
+                            <div id="barra-progresso" class="progress-fill"></div>
+                        </div>
+                        <p id="mensagem-envio" class="status-message"></p>
+                    </div>
+
+                    <div class="meta-row">
+                        <div class="tool-bentoCard meta-card">
+                            <span class="meta-label">Resolução</span>
+                            <span id="meta-res" class="meta-value">—</span>
+                        </div>
+                        <div class="tool-bentoCard meta-card">
+                            <span class="meta-label">Framerate</span>
+                            <span id="meta-fps" class="meta-value">—</span>
+                        </div>
+                        <div class="tool-bentoCard meta-card meta-duration">
+                            <span class="meta-label">Duração Total</span>
+                            <span id="meta-duracao" class="meta-big">—</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tool-bentoCard config-card">
+                <div class="card-header highlight">
+                    <span class="card-label">Configuração dos recortes</span>
+                </div>
+
+                <label class="input-label" for="quantidade-recortes">Quantidade de recortes</label>
+                <select id="quantidade-recortes" class="input-field select-field">
+                    <option value="1">1 recorte</option>
+                    <option value="2">2 recortes</option>
+                    <option value="3">3 recortes</option>
+                </select>
+
+                <div id="recortes-config" class="recortes-config"></div>
+
+                <label class="vertical-option">
+                    <input type="checkbox" id="formato-vertical">
+                    <span>Gerar em formato vertical 9:16 sem achatar</span>
+                </label>
+            </div>
+
+            <div id="painel-ia" class="painel-ia hidden">
+                <div class="tool-bentoCard transcription-card">
+                    <div class="card-header">
+                        <span class="card-status-dot"></span>
+                        <span class="card-label">Whisper Engine · Transcrição</span>
+                        <div style="margin-left:auto;display:flex;flex-direction:column;align-items:flex-end;gap:2px;">
+                            <span id="ia-meta-info" class="ia-meta-chip"></span>
+                            <span id="tempo-processamento" class="ia-tempo-chip"></span>
+                        </div>
+                    </div>
+                    <div class="transcription-box">
+                        <p id="texto-transcricao">Aguardando sinal do servidor...</p>
+                    </div>
+                </div>
+
+                <div class="tool-bentoCard cut-card">
+                    <div class="card-header highlight">
+                        <span class="card-label">Recortes Encontrados</span>
+                    </div>
+                    <div class="cut-time legacy-first-cut">
+                        <div>
+                            <span class="meta-label">Início</span>
+                            <span id="corte-inicio" class="cut-value">00:00:00</span>
+                        </div>
+                        <div class="cut-separator">—</div>
+                        <div>
+                            <span class="meta-label">Fim</span>
+                            <span id="corte-fim" class="cut-value highlight-text">00:00:00</span>
+                        </div>
+                    </div>
+                    <div class="cut-reason legacy-first-cut">
+                        <span class="meta-label">Motivo do primeiro recorte</span>
+                        <p id="corte-motivo">...</p>
+                    </div>
+                    <div id="area-download" class="cut-download multi-cuts-area"></div>
+                    <button type="button" onclick="resetarNovoCorte()" class="btn-secondary">Analisar Outro
+                        Vídeo</button>
+                </div>
+            </div>
+        </section>
+
+        <section id="aba-conteudos" class="section">
+            <div class="section-header">
+                <h2 class="title">Meus Conteúdos</h2>
+                <p class="subtitle">Sua esteira de cortes aprovados.</p>
+            </div>
+            <p id="conteudos-feedback" class="conteudos-feedback"></p>
+            <div class="tool-bentoCard conteudos-toolbar" id="conteudos-toolbar">
+                <div class="conteudos-toolbar-left">
+                    <span id="conteudos-count">0 selecionados</span>
+                </div>
+                <div class="conteudos-toolbar-actions">
+                    <button type="button" id="btn-select-all" class="btn-secondary-lite">Selecionar tudo</button>
+                    <button type="button" id="btn-clear-selection" class="btn-secondary-lite">Limpar seleção</button>
+                    <button type="button" id="btn-download-selected" class="btn-secondary-lite">Baixar
+                        selecionados</button>
+                    <button type="button" id="btn-delete-selected" class="btn-danger-lite">Excluir selecionados</button>
+                </div>
+            </div>
+            <div id="conteudos-lista" class="tools-grid"></div>
+            <template id="conteudos-empty-template">
+                <div class="tool-bentoCard empty-state">
+                    <img src="assets/img/content.svg" alt="content" class="content-icon">
+                    <h3 class="upload-title">Vazio por aqui</h3>
+                    <p class="upload-subtitle">Inicie fazendo o upload do seu primeiro arquivo bruto.</p>
+                    <button type="button" onclick="mudarAba('inicio')" class="btn-voltaInicio">Criar Projeto</button>
+                </div>
+            </template>
+        </section>
+
+        <section id="aba-ferramentas" class="section">
+            <div class="section-header">
+                <h2 class="title">Ferramentas Extras</h2>
+                <p class="subtitle">Utilitários de alta performance.</p>
+            </div>
+
+            <div class="tools-grid link-tools-grid">
+                <!-- YouTube Clipper -->
+                <div class="tool-bentoCard tool-card">
+                    <div class="tool-header">
+                        <img src="assets/img/youtubeLogo.svg" alt="YT" class="yt-icon">
+                        <div>
+                            <h3 class="tool-title">YouTube Clipper</h3>
+                            <p class="tool-description">Cole o link — a IA recorta o melhor trecho</p>
+                        </div>
+                    </div>
+                    <label class="input-label">URL do Vídeo</label>
+                    <input type="url" id="input-youtube" class="input-field"
+                        placeholder="https://youtube.com/watch?v=..." autocomplete="off">
+                    <button id="btn-yt-processar" onclick="processarLink('youtube')"
+                        class="btn-plataforma btn-yt-processar">
+                        Processar
+                    </button>
+                    <div class="yt-divider">ou</div>
+                    <button id="btn-yt-baixar" onclick="baixarLink('youtube')" class="btn-plataforma btn-baixar-link">
+                        Baixar (MP4)
+                    </button>
+                </div>
+
+                <!-- TikTok Clipper -->
+                <div class="tool-bentoCard tool-card">
+                    <div class="tool-header">
+                        <!-- TikTok SVG inline -->
+                        <svg class="tt-icon" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <rect width="48" height="48" rx="12" fill="#010101" />
+                            <path
+                                d="M34.2 19.4a10.8 10.8 0 0 1-6.3-2V27a8.2 8.2 0 1 1-8.2-8.2c.3 0 .6 0 .9.02v4.56a3.8 3.8 0 1 0 2.66 3.62V10h4.42a6.42 6.42 0 0 0 6.54 6.01v3.39z"
+                                fill="white" />
+                        </svg>
+                        <div>
+                            <h3 class="tool-title">TikTok Clipper</h3>
+                            <p class="tool-description">Cole o link do TikTok — a IA recorta o trecho viral</p>
+                        </div>
+                    </div>
+                    <label class="input-label">URL do Vídeo</label>
+                    <input type="url" id="input-tiktok" class="input-field"
+                        placeholder="https://tiktok.com/@user/video/..." autocomplete="off">
+                    <button id="btn-tt-processar" onclick="processarLink('tiktok')"
+                        class="btn-plataforma btn-tt-processar">
+                        Processar
+                    </button>
+                    <div class="yt-divider">ou</div>
+                    <button id="btn-tt-baixar" onclick="baixarLink('tiktok')" class="btn-plataforma btn-baixar-link">
+                        Baixar (MP4)
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <section id="aba-configs" class="section">
+            <div class="section-header">
+                <h2 class="title">Ajustes da Engine e Conta</h2>
+                <p class="subtitle">Defina o preset de corte padrão e gerencie seus dados de acesso.</p>
+            </div>
+            <div id="engine-configs" class="engine-configs-layout">
+                <div class="tool-bentoCard">
+                    <div class="card-header highlight">
+                        <span class="card-label">Preset padrão dos recortes</span>
+                    </div>
+                    <div class="engine-grid">
+                        <div class="engine-card" data-preset="<30s" onclick="selecionarEnginePreset(this)">
+                            <div class="engine-label">&lt; 30s</div>
+                            <div class="engine-name">Vídeo Rápido</div>
+                            <div class="engine-desc">Alta retenção e loop rápido. Cortes de 10 a 29 segundos.</div>
+                        </div>
+                        <div class="engine-card selected" data-preset="30s-60s" onclick="selecionarEnginePreset(this)">
+                            <div class="engine-label">30s – 60s</div>
+                            <div class="engine-name">Corte Padrão</div>
+                            <div class="engine-desc">Formato equilibrado para narrativa e engajamento.</div>
+                        </div>
+                        <div class="engine-card" data-preset=">60s" onclick="selecionarEnginePreset(this)">
+                            <div class="engine-label">&gt; 60s</div>
+                            <div class="engine-name">Corte Profundo</div>
+                            <div class="engine-desc">Para narrativa longa e contexto, com até 90 segundos.</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tool-bentoCard account-card">
+                    <div class="card-header highlight">
+                        <span class="card-label">Perfil do usuário</span>
+                    </div>
+                    <p class="subtitle profile-subtitle">Dados protegidos por token Bearer (Supabase Auth).</p>
+                    <form id="form-profile-nome" class="account-form-grid">
+                        <label class="input-label" for="profile-nome">Nome</label>
+                        <input id="profile-nome" class="input-field" type="text" maxlength="80"
+                            placeholder="Seu nome" />
+                        <button type="submit" class="btn-secondary-lite">Salvar nome</button>
+                    </form>
+                    <form id="form-profile-email" class="account-form-grid">
+                        <label class="input-label" for="profile-email">E-mail</label>
+                        <input id="profile-email" class="input-field" type="email" placeholder="seu@email.com" />
+                        <button type="submit" class="btn-secondary-lite">Atualizar e-mail</button>
+                    </form>
+                    <form id="form-profile-senha" class="account-form-grid">
+                        <label class="input-label" for="profile-senha">Nova senha</label>
+                        <input id="profile-senha" class="input-field" type="password" minlength="6"
+                            placeholder="••••••••" />
+                        <button type="submit" class="btn-secondary-lite">Atualizar senha</button>
+                    </form>
+                    <p id="profile-feedback" class="conteudos-feedback profile-feedback"></p>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <script src="./js/config.js"></script>
+    <script src="./js/auth.js"></script>
+    <script src="./js/app.js"></script>
+</body>
+
+</html>

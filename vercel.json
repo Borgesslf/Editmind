@@ -1,0 +1,37 @@
+{
+  "version": 2,
+  "routes": [
+    {
+      "src": "^/$",
+      "dest": "/frontend/home.html"
+    },
+    {
+      "src": "^/app/?$",
+      "dest": "/frontend/index.html"
+    },
+    {
+      "src": "^/login/?$",
+      "dest": "/frontend/login.html"
+    },
+    {
+      "src": "^/cadastro/?$",
+      "dest": "/frontend/cadastro.html"
+    },
+    {
+      "src": "^/esqueci/?$",
+      "dest": "/frontend/esqueci-senha.html"
+    },
+    {
+      "src": "^/redefinir/?$",
+      "dest": "/frontend/redefinir-senha.html"
+    },
+    {
+      "src": "^/(home|index|login|cadastro|esqueci-senha|redefinir-senha)\\.html$",
+      "dest": "/frontend/$1.html"
+    },
+    {
+      "src": "^/(js|css|assets)/(.+)$",
+      "dest": "/frontend/$1/$2"
+    }
+  ]
+}
