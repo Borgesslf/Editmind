@@ -15,8 +15,8 @@
         }
 
         .glass-panel {
-            background: rgba(255, 255, 255, 0.03);
-            backdrop-filter: blur(20px);
+            background: #0d1016;
+            backdrop-filter: none;
         }
 
         .glow-orange {
@@ -45,6 +45,26 @@
         svg {
             max-width: 100%;
             height: auto;
+        }
+
+        *,
+        *::before,
+        *::after {
+            backdrop-filter: none !important;
+            filter: none !important;
+            box-shadow: none !important;
+            animation: none !important;
+        }
+
+        a,
+        button,
+        #demo-progress {
+            transition-duration: .1s !important;
+        }
+
+        a:hover,
+        button:hover {
+            transform: none !important;
         }
     </style>
 </head>

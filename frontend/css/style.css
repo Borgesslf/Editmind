@@ -2673,3 +2673,75 @@ select {
         min-height: 380px;
     }
 }
+
+/* Performance: opaque surfaces do not benefit from live backdrop sampling. */
+.tool-bentoCard,
+.btn-nav,
+.nav-items {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+}
+
+.tool-bentoCard,
+.section.active {
+    contain: layout style;
+}
+
+.tool-bentoCard {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 320px;
+}
+
+.video-result-player,
+.conteudo-video {
+    backface-visibility: hidden;
+}
+
+html.performance-mode *,
+html.performance-mode *::before,
+html.performance-mode *::after {
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+    box-shadow: none !important;
+    filter: none !important;
+    animation: none !important;
+}
+
+html.performance-mode .tool-bentoCard {
+    background: #0d1016;
+}
+
+html.performance-mode .btn-nav,
+html.performance-mode .nav-items {
+    background: #080a0d;
+}
+
+html.performance-mode a,
+html.performance-mode button,
+html.performance-mode input,
+html.performance-mode select,
+html.performance-mode .progress-fill,
+html.performance-mode .painel-ia {
+    scroll-behavior: auto !important;
+    transition-duration: .1s !important;
+}
+
+html.performance-mode .upload-card:hover .upload-icon,
+html.performance-mode .btn-upload:hover,
+html.performance-mode .btn-download:hover,
+html.performance-mode .btn-assistir:hover,
+html.performance-mode .engine-card:hover,
+html.performance-mode .logo:hover,
+html.performance-mode .nav-toggle:hover {
+    transform: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: .01ms !important;
+        animation-iteration-count: 1 !important;
+        scroll-behavior: auto !important;
+    }
+}

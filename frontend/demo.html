@@ -32,8 +32,9 @@
         }
 
         .glass-panel {
-            background: rgba(255, 255, 255, .03);
-            backdrop-filter: blur(20px);
+            background: #0d1016;
+            backdrop-filter: none;
+            contain: layout paint style;
         }
 
         .mock-phone {
@@ -46,16 +47,16 @@
 
         .mock-wave {
             background: linear-gradient(90deg, rgba(249, 115, 22, .08), rgba(249, 115, 22, .35), rgba(249, 115, 22, .08));
-            background-size: 220% 100%;
-            animation: shimmer 2s linear infinite;
+            background-size: 100% 100%;
+            animation: none;
         }
 
         .mock-caption {
-            animation: floatIn .6s ease both;
+            animation: none;
         }
 
         .pulse-orange {
-            animation: pulse 2s infinite;
+            animation: none;
         }
 
         @keyframes shimmer {
