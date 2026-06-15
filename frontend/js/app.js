@@ -312,6 +312,61 @@ function montarUrlVideo(videoUrl) {
     }
 }
 
+async function carregarVideoPeloBackend(video) {
+    if (!video) return;
+    if (video._backendLoadPromise) return video._backendLoadPromise;
+
+    const corteId = video.getAttribute('data-corte-id');
+    if (!corteId) throw new Error('Recorte sem identificador.');
+
+    video._backendLoadPromise = (async () => {
+        const endpoint = `${API}/api/cortes/${encodeURIComponent(corteId)}/arquivo`;
+        const res = await fetch(endpoint, { method: 'GET', headers: getAuthHeaders() });
+        if (!res.ok) {
+            const dados = await res.json().catch(() => ({}));
+            throw new Error(dados.detail || `Falha ao carregar o vídeo (${res.status}).`);
+        }
+        const blob = await res.blob();
+        video.src = URL.createObjectURL(blob);
+        video.load();
+    })();
+
+    try {
+        await video._backendLoadPromise;
+    } catch (error) {
+        video._backendLoadPromise = null;
+        throw error;
+    }
+}
+
+function ativarFallbackVideosProtegidos(container) {
+    if (!container) return;
+    container.querySelectorAll('video[data-corte-id]').forEach(video => {
+        video.addEventListener('error', () => {
+            carregarVideoPeloBackend(video).catch(error => {
+                console.error('[EditMind] Erro ao carregar vídeo protegido:', error);
+            });
+        }, { once: true });
+
+        if (!video.getAttribute('src') || video.getAttribute('src') === '#') {
+            carregarVideoPeloBackend(video).catch(error => {
+                console.error('[EditMind] Erro ao carregar vídeo protegido:', error);
+            });
+        }
+    });
+}
+
+async function reproduzirVideo(video) {
+    if (!video) return;
+    video.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    try {
+        await video.play();
+    } catch {
+        await carregarVideoPeloBackend(video);
+        await video.play();
+    }
+}
+
 function formatarDataPtBR(isoString) {
     if (!isoString) return 'Data indisponível';
     const data = new Date(isoString);
@@ -537,11 +592,15 @@ function exibirResultado(data) {
     const area = $('area-download');
     if (!area) return;
     area.innerHTML = cortes.map((corte, idx) => renderCorteResultado(corte, idx)).join('');
+    ativarFallbackVideosProtegidos(area);
 }
 
 function renderCorteResultado(corte, idx) {
-    const urlCorte = montarUrlVideo(corte.url_corte || corte.video_url);
+    const urlOriginal = montarUrlVideo(corte.url_corte || corte.video_url);
+    const urlCorte = montarUrlVideo(corte.media_url || urlOriginal);
     const urlCorteHtml = escaparHtml(urlCorte);
+    const urlOriginalHtml = escaparHtml(urlOriginal);
+    const corteId = escaparHtml(corte.id || '');
     const storageTag = corte.storage === 'supabase'
         ? '<span class="storage-chip storage-ok">Supabase Storage</span>'
         : '<span class="storage-chip storage-local">Servidor local</span>';
@@ -552,7 +611,7 @@ function renderCorteResultado(corte, idx) {
                 <strong>${titulo}</strong>
                 ${storageTag}
             </div>
-            <video src="${urlCorteHtml}" controls preload="metadata" class="video-result-player" playsinline></video>
+            <video src="${urlCorteHtml}" data-corte-id="${corteId}" controls preload="metadata" class="video-result-player" playsinline></video>
             <div class="resultado-meta-grid">
                 <span>Início: <b>${escaparHtml(corte.inicio || '—')}</b></span>
                 <span>Fim: <b>${escaparHtml(corte.fim || '—')}</b></span>
@@ -562,7 +621,7 @@ function renderCorteResultado(corte, idx) {
             <p class="resultado-motivo">${escaparHtml(corte.motivo || 'Trecho viral identificado.')}</p>
             <div class="result-btns">
                 <button type="button" class="btn-assistir btn-play-inline">Assistir</button>
-                <button type="button" class="btn-download btn-download-video" data-url="${urlCorteHtml}">Baixar MP4</button>
+                <button type="button" class="btn-download btn-download-video" data-corte-id="${corteId}" data-url="${urlOriginalHtml}">Baixar MP4</button>
             </div>
         </article>
     `;
@@ -590,8 +649,8 @@ function baixarBlob(blob, filename) {
     URL.revokeObjectURL(blobUrl);
 }
 
-async function baixarArquivoVideo(urlVideo, botaoRef = null) {
-    if (!urlVideo || urlVideo === '#') {
+async function baixarArquivoVideo(corteId, urlVideo, botaoRef = null) {
+    if (!corteId && (!urlVideo || urlVideo === '#')) {
         alert('Não foi possível identificar a URL do vídeo para download.');
         return;
     }
@@ -599,9 +658,22 @@ async function baixarArquivoVideo(urlVideo, botaoRef = null) {
     const textoOriginal = btn ? btn.textContent : '';
     if (btn) { btn.disabled = true; btn.textContent = 'Baixando...'; }
     try {
-        const endpoint = `${API}/api/cortes/download?video_url=${encodeURIComponent(urlVideo)}`;
-        const res = await fetch(endpoint, { method: 'GET', headers: getAuthHeaders() });
-        if (!res.ok) throw new Error(`Falha no download (${res.status}).`);
+        const endpoints = [];
+        if (corteId) endpoints.push(`${API}/api/cortes/${encodeURIComponent(corteId)}/arquivo?download=true`);
+        if (urlVideo && urlVideo !== '#') {
+            endpoints.push(`${API}/api/cortes/download?video_url=${encodeURIComponent(urlVideo)}`);
+        }
+
+        let res = null;
+        let ultimoErro = 'Falha no download.';
+        for (const endpoint of endpoints) {
+            res = await fetch(endpoint, { method: 'GET', headers: getAuthHeaders() });
+            if (res.ok) break;
+            const dados = await res.json().catch(() => ({}));
+            ultimoErro = dados.detail || `Falha no download (${res.status}).`;
+        }
+        if (!res?.ok) throw new Error(ultimoErro);
+
         const blob = await res.blob();
         baixarBlob(blob, 'Corte_EditMind.mp4');
     } catch (err) {
@@ -647,26 +719,29 @@ function renderConteudos(cortes) {
     conteudosLista.innerHTML = window.meusCortes.map((corte) => {
         const titulo = escaparHtml(corte.titulo || 'Sem título');
         const dataFmt = formatarDataPtBR(corte.criado_em);
-        const urlVideo = montarUrlVideo(corte.video_url);
+        const urlOriginal = montarUrlVideo(corte.video_url);
+        const urlVideo = montarUrlVideo(corte.media_url || urlOriginal);
         const urlVideoHtml = escaparHtml(urlVideo);
+        const urlOriginalHtml = escaparHtml(urlOriginal);
         const corteId = escaparHtml(corte.id || '');
         const foco = escaparHtml(corte.foco || 'Livre');
         const duracaoTipo = escaparHtml(duracaoLabel(corte.duracao_tipo));
         return `
             <article class="tool-bentoCard conteudo-card" data-corte-id="${corteId}">
                 <label class="conteudo-select-wrap"><input type="checkbox" class="conteudo-select" data-corte-id="${corteId}"> Selecionar</label>
-                <video src="${urlVideoHtml}" controls preload="metadata" class="conteudo-video"></video>
+                <video src="${urlVideoHtml}" data-corte-id="${corteId}" controls preload="metadata" class="conteudo-video"></video>
                 <h3 class="tool-title conteudo-title">${titulo}</h3>
                 <p class="tool-description conteudo-date">Criado em: ${dataFmt}</p>
                 <p class="conteudo-tags">Foco: <b>${foco}</b> · Duração: <b>${duracaoTipo}</b></p>
                 <div class="result-btns">
-                    <a href="${urlVideoHtml}" target="_blank" rel="noopener noreferrer" class="btn-assistir">Abrir vídeo</a>
-                    <button type="button" class="btn-download btn-download-video" data-url="${urlVideoHtml}">Baixar</button>
+                    <button type="button" class="btn-assistir btn-open-video">Abrir vídeo</button>
+                    <button type="button" class="btn-download btn-download-video" data-corte-id="${corteId}" data-url="${urlOriginalHtml}">Baixar</button>
                     <button type="button" class="btn-excluir-corte" data-corte-id="${corteId}">Excluir</button>
                 </div>
             </article>
         `;
     }).join('');
+    ativarFallbackVideosProtegidos(conteudosLista);
 }
 
 async function carregarMeusConteudos() {
@@ -836,8 +911,9 @@ async function excluirSelecionados() {
 document.addEventListener('click', (event) => {
     const btnDownload = event.target.closest('.btn-download-video');
     if (btnDownload) {
+        const corteId = btnDownload.getAttribute('data-corte-id');
         const videoUrl = btnDownload.getAttribute('data-url');
-        baixarArquivoVideo(videoUrl, btnDownload);
+        baixarArquivoVideo(corteId, videoUrl, btnDownload);
         return;
     }
 
@@ -845,7 +921,21 @@ document.addEventListener('click', (event) => {
     if (btnPlay) {
         const card = btnPlay.closest('.resultado-corte-card');
         const video = card?.querySelector('video');
-        if (video) { video.scrollIntoView({ behavior: 'smooth', block: 'center' }); video.play(); }
+        reproduzirVideo(video).catch(error => {
+            console.error('[EditMind] Erro ao reproduzir vídeo:', error);
+            alert('Não foi possível reproduzir o vídeo agora.');
+        });
+        return;
+    }
+
+    const btnOpenVideo = event.target.closest('.btn-open-video');
+    if (btnOpenVideo) {
+        const card = btnOpenVideo.closest('.conteudo-card');
+        const video = card?.querySelector('video');
+        reproduzirVideo(video).catch(error => {
+            console.error('[EditMind] Erro ao abrir vídeo:', error);
+            alert('Não foi possível reproduzir o vídeo agora.');
+        });
         return;
     }
 

@@ -31,7 +31,7 @@ from urllib.parse import urlparse, unquote, quote
 import httpx
 from fastapi import FastAPI, File, UploadFile, HTTPException, BackgroundTasks, Depends, Header, Form
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.responses import FileResponse, JSONResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, EmailStr, field_validator, Field
 from dotenv import load_dotenv
@@ -59,6 +59,7 @@ YTDLP_EXTRACTOR_ARGS = os.getenv("YTDLP_EXTRACTOR_ARGS", "youtube:player_client=
 # Default seguro para Render Free. Para 30 minutos, configure MAX_DURACAO_S=1800 no Render.
 MAX_DURACAO_S = int(os.getenv("MAX_DURACAO_S", "180"))
 MAX_BYTES = int(os.getenv("MAX_BYTES", str(200 * 1024 * 1024)))
+MEDIA_URL_TTL_S = int(os.getenv("MEDIA_URL_TTL_S", "3600"))
 
 # ── Clientes ──────────────────────────────────────────────────
 openai_client = AsyncOpenAI(api_key=OPENAI_API_KEY) if OPENAI_API_KEY else None
@@ -873,6 +874,49 @@ def _url_publica_storage_confiavel(video_url: str) -> Optional[str]:
     return f"{SUPABASE_URL.rstrip('/')}/storage/v1/object/public/{STORAGE_BUCKET}/{objeto_codificado}"
 
 
+async def _obter_arquivo_storage(video_url: str) -> bytes:
+    objeto = _extrair_objeto_storage(video_url)
+    if not objeto or not supabase_admin:
+        raise HTTPException(400, "URL de recorte não permitida.")
+
+    try:
+        conteudo = await asyncio.to_thread(
+            lambda: supabase_admin.storage.from_(STORAGE_BUCKET).download(objeto)
+        )
+        return bytes(conteudo)
+    except Exception as e:
+        logger.error("Storage falhou ao buscar %s: %s", objeto, e)
+        raise HTTPException(502, "Falha ao obter o arquivo do recorte.")
+
+
+async def _criar_url_reproducao(video_url: str) -> str:
+    if not video_url:
+        return ""
+    if _normalizar_video_url(video_url).startswith("/outputs/"):
+        return video_url
+
+    objeto = _extrair_objeto_storage(video_url)
+    if not objeto or not SUPABASE_URL or not supabase_admin:
+        return _url_publica_storage_confiavel(video_url) or video_url
+
+    try:
+        payload = await asyncio.to_thread(
+            lambda: supabase_admin.storage.from_(STORAGE_BUCKET).create_signed_url(
+                objeto,
+                MEDIA_URL_TTL_S,
+            )
+        )
+        signed_url = payload if isinstance(payload, str) else (
+            payload.get("signedURL") or payload.get("signedUrl") or ""
+        )
+        if signed_url.startswith("/"):
+            signed_url = f"{SUPABASE_URL.rstrip('/')}{signed_url}"
+        return signed_url or (_url_publica_storage_confiavel(video_url) or video_url)
+    except Exception as e:
+        logger.warning("Não foi possível gerar URL assinada para %s: %s", objeto, e)
+        return _url_publica_storage_confiavel(video_url) or video_url
+
+
 def _normalizar_video_url(video_url: str) -> str:
     if not video_url:
         return ""
@@ -1061,6 +1105,7 @@ async def _salvar_cortes_do_resultado(usuario: dict, titulo_base: str, resultado
         )
         if registro and registro.get("id"):
             corte["id"] = registro.get("id")
+        corte["media_url"] = await _criar_url_reproducao(corte.get("url_corte", ""))
     return resultado
 
 
@@ -1308,11 +1353,68 @@ async def meus_cortes(usuario: dict = Depends(get_current_user)):
             .execute()
         )
         cortes = resp.data or []
+        urls_reproducao = await asyncio.gather(
+            *(_criar_url_reproducao(corte.get("video_url", "")) for corte in cortes)
+        )
+        for corte, media_url in zip(cortes, urls_reproducao):
+            corte["media_url"] = media_url
         logger.info(f"/api/meus-cortes usuário={user_email} registros={len(cortes)}")
         return {"sucesso": True, "cortes": cortes}
     except Exception as e:
         logger.error(f"Erro ao buscar cortes do usuário: {e}")
         raise HTTPException(500, "Erro ao buscar histórico de cortes.")
+
+
+async def _buscar_corte_do_usuario(corte_id: str, user_email: str) -> dict:
+    busca = await asyncio.to_thread(
+        lambda: supabase_admin.table("cortes")
+        .select("id,titulo,video_url,user_email")
+        .eq("id", corte_id)
+        .eq("user_email", user_email)
+        .limit(1)
+        .execute()
+    )
+    corte = (busca.data or [None])[0]
+    if not corte:
+        raise HTTPException(404, "Recorte não encontrado.")
+    return corte
+
+
+@app.get("/api/cortes/{corte_id}/arquivo")
+async def arquivo_corte(
+    corte_id: str,
+    download: bool = False,
+    usuario: dict = Depends(get_current_user),
+):
+    if not supabase_admin:
+        raise HTTPException(503, "Banco indisponível.")
+    user_email = usuario.get("email")
+    if not user_email:
+        raise HTTPException(401, "Usuário inválido: email ausente no token.")
+
+    corte = await _buscar_corte_do_usuario(corte_id, user_email)
+    video_url = corte.get("video_url", "")
+    nome_base = sanitizar(corte.get("titulo") or "Corte_EditMind").removesuffix(".mp4")
+    nome_arquivo = f"{nome_base or 'Corte_EditMind'}.mp4"
+    disposition = "attachment" if download else "inline"
+    response_headers = {"Content-Disposition": f'{disposition}; filename="{nome_arquivo}"'}
+
+    arquivo_local = _resolver_arquivo_output(video_url)
+    if arquivo_local:
+        return FileResponse(
+            arquivo_local,
+            media_type="video/mp4",
+            headers=response_headers,
+        )
+
+    conteudo = await _obter_arquivo_storage(video_url)
+    response_headers["Content-Length"] = str(len(conteudo))
+
+    return Response(
+        content=conteudo,
+        media_type="video/mp4",
+        headers=response_headers,
+    )
 
 
 @app.get("/api/cortes/download")
@@ -1351,16 +1453,15 @@ async def download_corte(video_url: str, usuario: dict = Depends(get_current_use
 
             return StreamingResponse(iter_local(), media_type="video/mp4", headers={"Content-Disposition": 'attachment; filename="Corte_EditMind.mp4"'})
 
-        url_remota = _url_publica_storage_confiavel(registro.get("video_url", ""))
-        if not url_remota:
-            raise HTTPException(400, "URL de recorte não permitida.")
-
-        async with httpx.AsyncClient(timeout=90.0, follow_redirects=True) as client:
-            resp = await client.get(url_remota)
-            if resp.status_code >= 400:
-                raise HTTPException(502, "Falha ao obter arquivo remoto para download.")
-            content_type = resp.headers.get("content-type", "video/mp4")
-            return StreamingResponse(iter([resp.content]), media_type=content_type, headers={"Content-Disposition": 'attachment; filename="Corte_EditMind.mp4"'})
+        conteudo = await _obter_arquivo_storage(registro.get("video_url", ""))
+        return StreamingResponse(
+            iter([conteudo]),
+            media_type="video/mp4",
+            headers={
+                "Content-Disposition": 'attachment; filename="Corte_EditMind.mp4"',
+                "Content-Length": str(len(conteudo)),
+            },
+        )
     except HTTPException:
         raise
     except Exception as e:
@@ -1451,12 +1552,9 @@ async def baixar_cortes_em_massa(dados: BulkDeleteRequest, usuario: dict = Depen
     pasta_temp = Path(tempfile.mkdtemp(prefix="editmind_zip_"))
     zip_path = pasta_temp / "recortes_editmind.zip"
 
-    async def _baixar_para_arquivo(url: str, destino: Path):
-        async with httpx.AsyncClient(timeout=120.0, follow_redirects=True) as client:
-            resp = await client.get(url)
-            if resp.status_code >= 400:
-                raise RuntimeError("Falha ao baixar arquivo remoto")
-            destino.write_bytes(resp.content)
+    async def _baixar_para_arquivo(video_url: str, destino: Path):
+        conteudo = await _obter_arquivo_storage(video_url)
+        destino.write_bytes(conteudo)
 
     try:
         with zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_DEFLATED) as zipf:
@@ -1469,12 +1567,11 @@ async def baixar_cortes_em_massa(dados: BulkDeleteRequest, usuario: dict = Depen
                     zipf.write(arquivo, arcname=nome_zip)
                     continue
 
-                url_remota = _url_publica_storage_confiavel(url)
-                if not url_remota:
+                if not _extrair_objeto_storage(url):
                     raise HTTPException(400, f"URL inválida no recorte {corte.get('id') or i}.")
 
                 destino = pasta_temp / f"tmp_{i}.mp4"
-                await _baixar_para_arquivo(url_remota, destino)
+                await _baixar_para_arquivo(url, destino)
                 zipf.write(destino, arcname=nome_zip)
 
         file_size = zip_path.stat().st_size
