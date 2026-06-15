@@ -320,14 +320,16 @@ async function carregarVideoPeloBackend(video) {
     if (!corteId) throw new Error('Recorte sem identificador.');
 
     video._backendLoadPromise = (async () => {
-        const endpoint = `${API}/api/cortes/${encodeURIComponent(corteId)}/arquivo`;
+        const endpoint = `${API}/api/cortes/${encodeURIComponent(corteId)}/url`;
         const res = await fetch(endpoint, { method: 'GET', headers: getAuthHeaders() });
+        const dados = await res.json().catch(() => ({}));
         if (!res.ok) {
-            const dados = await res.json().catch(() => ({}));
             throw new Error(dados.detail || `Falha ao carregar o vídeo (${res.status}).`);
         }
-        const blob = await res.blob();
-        video.src = URL.createObjectURL(blob);
+        const mediaUrl = montarUrlVideo(dados.media_url);
+        if (mediaUrl === '#') throw new Error('URL de reprodução indisponível.');
+        video.src = mediaUrl;
+        video.preload = 'metadata';
         video.load();
     })();
 
@@ -339,31 +341,58 @@ async function carregarVideoPeloBackend(video) {
     }
 }
 
+async function carregarVideoBlobPeloBackend(video) {
+    if (!video) return;
+    if (video._blobLoadPromise) return video._blobLoadPromise;
+
+    const corteId = video.getAttribute('data-corte-id');
+    if (!corteId) throw new Error('Recorte sem identificador.');
+
+    video._blobLoadPromise = (async () => {
+        const endpoint = `${API}/api/cortes/${encodeURIComponent(corteId)}/arquivo?download=true`;
+        const res = await fetch(endpoint, { method: 'GET', headers: getAuthHeaders() });
+        if (!res.ok) {
+            const dados = await res.json().catch(() => ({}));
+            throw new Error(dados.detail || `Falha ao carregar o vídeo (${res.status}).`);
+        }
+        const blob = await res.blob();
+        video._usingBackendBlob = true;
+        video.src = URL.createObjectURL(blob);
+        video.load();
+    })();
+
+    try {
+        await video._blobLoadPromise;
+    } catch (error) {
+        video._blobLoadPromise = null;
+        throw error;
+    }
+}
+
 function ativarFallbackVideosProtegidos(container) {
     if (!container) return;
     container.querySelectorAll('video[data-corte-id]').forEach(video => {
         video.addEventListener('error', () => {
-            carregarVideoPeloBackend(video).catch(error => {
-                console.error('[EditMind] Erro ao carregar vídeo protegido:', error);
-            });
-        }, { once: true });
-
-        if (!video.getAttribute('src') || video.getAttribute('src') === '#') {
-            carregarVideoPeloBackend(video).catch(error => {
-                console.error('[EditMind] Erro ao carregar vídeo protegido:', error);
-            });
-        }
+            if (video._usingBackendBlob) return;
+            carregarVideoBlobPeloBackend(video)
+                .then(() => video.play().catch(() => {}))
+                .catch(error => {
+                    console.error('[EditMind] Erro ao carregar vídeo protegido:', error);
+                });
+        });
     });
 }
 
 async function reproduzirVideo(video) {
     if (!video) return;
     video.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    if (!video.getAttribute('src') || video.getAttribute('src') === '#') {
+        await carregarVideoPeloBackend(video);
+    }
     try {
         await video.play();
-    } catch {
-        await carregarVideoPeloBackend(video);
-        await video.play();
+    } catch (error) {
+        console.warn('[EditMind] Reprodução aguardando interação do usuário:', error);
     }
 }
 
@@ -720,8 +749,8 @@ function renderConteudos(cortes) {
         const titulo = escaparHtml(corte.titulo || 'Sem título');
         const dataFmt = formatarDataPtBR(corte.criado_em);
         const urlOriginal = montarUrlVideo(corte.video_url);
-        const urlVideo = montarUrlVideo(corte.media_url || urlOriginal);
-        const urlVideoHtml = escaparHtml(urlVideo);
+        const urlVideo = montarUrlVideo(corte.media_url);
+        const videoSrc = urlVideo === '#' ? '' : ` src="${escaparHtml(urlVideo)}"`;
         const urlOriginalHtml = escaparHtml(urlOriginal);
         const corteId = escaparHtml(corte.id || '');
         const foco = escaparHtml(corte.foco || 'Livre');
@@ -729,7 +758,7 @@ function renderConteudos(cortes) {
         return `
             <article class="tool-bentoCard conteudo-card" data-corte-id="${corteId}">
                 <label class="conteudo-select-wrap"><input type="checkbox" class="conteudo-select" data-corte-id="${corteId}"> Selecionar</label>
-                <video src="${urlVideoHtml}" data-corte-id="${corteId}" controls preload="metadata" class="conteudo-video"></video>
+                <video${videoSrc} data-corte-id="${corteId}" controls preload="none" class="conteudo-video"></video>
                 <h3 class="tool-title conteudo-title">${titulo}</h3>
                 <p class="tool-description conteudo-date">Criado em: ${dataFmt}</p>
                 <p class="conteudo-tags">Foco: <b>${foco}</b> · Duração: <b>${duracaoTipo}</b></p>
@@ -923,6 +952,15 @@ document.addEventListener('click', (event) => {
         const video = card?.querySelector('video');
         reproduzirVideo(video).catch(error => {
             console.error('[EditMind] Erro ao reproduzir vídeo:', error);
+            alert('Não foi possível reproduzir o vídeo agora.');
+        });
+        return;
+    }
+
+    const protectedVideo = event.target.closest('video[data-corte-id]');
+    if (protectedVideo && (!protectedVideo.getAttribute('src') || protectedVideo.getAttribute('src') === '#')) {
+        reproduzirVideo(protectedVideo).catch(error => {
+            console.error('[EditMind] Erro ao iniciar vídeo:', error);
             alert('Não foi possível reproduzir o vídeo agora.');
         });
         return;

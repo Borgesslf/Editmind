@@ -31,7 +31,7 @@ from urllib.parse import urlparse, unquote, quote
 import httpx
 from fastapi import FastAPI, File, UploadFile, HTTPException, BackgroundTasks, Depends, Header, Form
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse, Response, StreamingResponse
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, EmailStr, field_validator, Field
 from dotenv import load_dotenv
@@ -1353,11 +1353,6 @@ async def meus_cortes(usuario: dict = Depends(get_current_user)):
             .execute()
         )
         cortes = resp.data or []
-        urls_reproducao = await asyncio.gather(
-            *(_criar_url_reproducao(corte.get("video_url", "")) for corte in cortes)
-        )
-        for corte, media_url in zip(cortes, urls_reproducao):
-            corte["media_url"] = media_url
         logger.info(f"/api/meus-cortes usuário={user_email} registros={len(cortes)}")
         return {"sucesso": True, "cortes": cortes}
     except Exception as e:
@@ -1378,6 +1373,21 @@ async def _buscar_corte_do_usuario(corte_id: str, user_email: str) -> dict:
     if not corte:
         raise HTTPException(404, "Recorte não encontrado.")
     return corte
+
+
+@app.get("/api/cortes/{corte_id}/url")
+async def url_corte(corte_id: str, usuario: dict = Depends(get_current_user)):
+    if not supabase_admin:
+        raise HTTPException(503, "Banco indisponível.")
+    user_email = usuario.get("email")
+    if not user_email:
+        raise HTTPException(401, "Usuário inválido: email ausente no token.")
+
+    corte = await _buscar_corte_do_usuario(corte_id, user_email)
+    media_url = await _criar_url_reproducao(corte.get("video_url", ""))
+    if not media_url:
+        raise HTTPException(404, "Arquivo do recorte não encontrado.")
+    return {"sucesso": True, "media_url": media_url}
 
 
 @app.get("/api/cortes/{corte_id}/arquivo")
@@ -1406,6 +1416,11 @@ async def arquivo_corte(
             media_type="video/mp4",
             headers=response_headers,
         )
+
+    if not download:
+        media_url = await _criar_url_reproducao(video_url)
+        if media_url:
+            return RedirectResponse(media_url, status_code=307)
 
     conteudo = await _obter_arquivo_storage(video_url)
     response_headers["Content-Length"] = str(len(conteudo))

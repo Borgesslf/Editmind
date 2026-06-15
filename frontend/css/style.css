@@ -1248,6 +1248,11 @@ button:hover, a:hover, .nav-item:hover, .engine-card:hover, .upload-card:hover {
     gap: 12px;
 }
 
+.conteudo-card {
+    content-visibility: auto;
+    contain-intrinsic-size: 520px;
+}
+
 .resultado-corte-head {
     display: flex;
     justify-content: space-between;
@@ -1279,6 +1284,13 @@ button:hover, a:hover, .nav-item:hover, .engine-card:hover, .upload-card:hover {
     border-radius: 14px;
     background: #000;
     max-height: 460px;
+}
+
+.conteudo-video:not([src]) {
+    aspect-ratio: 16 / 9;
+    background:
+        radial-gradient(circle at center, rgba(255,255,255,.08) 0 30px, transparent 31px),
+        #080a0d;
 }
 
 .resultado-meta-grid {
